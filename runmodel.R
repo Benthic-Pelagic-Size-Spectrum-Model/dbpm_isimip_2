@@ -2,30 +2,39 @@ rm(list=ls())
 library(parallel)
 #
 
-source('~/GlobalModel/size-based-models/R/dynamic_sizebased_model_functions.R', chdir = TRUE)
+source('/data/home/justb/GlobalModel/size-based-models/R/dynamic_sizebased_model_functions.R', chdir = TRUE)
 
-rungridsep<-function(igrid=1,gcm="ipsl-cm5a-lr",run="rcp45",output="aggregated"){
+rungridsep <- function(igrid=1
+                       ,gcm="ipsl-cm5a-lr"
+                       ,run="rcp45"
+                       ,output="aggregated"
+                       ,input_files_location = "/../../rd/gem/private/fishmip_inputs/"
+                       ,output_files_location = "/../../rd/gem/private/fishmip_outputs/") {
   
   # we need to run the model with time-varying inputs   
   # the largest dt of the model is a monthly time step (Q-F was daily...which may still be needed) 
-  # once we have all of the inputs, we need to set the model up on an appropriate time step. the output may be too large a time step
+  # once we have all of the inputs, we need to set the model up on an appropriate time step. 
+  # the output may be too large a time step
   # checked this: model can run on a weekly timestep, but not monthly
-  
   
   # how long does it take to set up and run model on one grid cell for whole (disaggregated) time series?
   
   # ptm=proc.time()
   # options(warn=-1)
-
-  if (gcm =="reanalysis"){  
-    load(paste("/../../rd/gem/private/fishmip_inputs/grid_",igrid,"_inputs_",gcm,"_",run,".RData",sep=""))
+  
+  if (gcm =="reanalysis"){
+    
+    input_filename <- sprintf("grid_%i_inputs_%s_%s.RData", igrid, gcm, run)
+    
+    load(paste(input_files_location, input_filename, sep=""))
     
   } else {
     
-    load(paste("/../../rd/gem/private/fishmip_inputs/grid_",igrid,"_inputs2_",gcm,"_",run,".RData",sep=""))
-    #load(paste("/../../rd/gem/private/fishmip_inputs/grid_",1,"_inputs2_","ipsl-cm5a-lr","_","rcp60",".RData",sep=""))
+    input_filename <- sprintf("grid_%i_inputs2_%s_%s.RData", igrid, gcm, run)
     
-    plot(inputs$ts$sst)
+    load(paste(input_files_location, input_filename, sep=""))
+
+    #plot(inputs$ts$sst) 
     
     histmean <- colMeans(inputs$ts[(301*48):(300*48+55*48),])
     
@@ -130,13 +139,16 @@ rungridsep<-function(igrid=1,gcm="ipsl-cm5a-lr",run="rcp45",output="aggregated")
       # convert all biomasses  and catches from g C or g WW per m^3 to per m^2   
       agg[1,1:13]<-agg[,1:13]*min(agg$depth[],100)
       
-      save(agg,file=paste("/../../rd/gem/private/fishmip_outputs/res_mts_agg_igrid_",igrid,"_",gcm,"_",run,".RData",sep=""))
+      
+      output_filename <- sprintf("res_mts_agg_igrid_%i_%s_%s.RData",igrid,gcm,run)
+      save(agg, file=paste(output_files_location, output_filename, sep=""))
       
     }
     
     
     if (output!="aggregated") {
-      save(res,file=paste("/../../rd/gem/private/fishmip_outputs/res_wts_igrid_",igrid,"_",gcm,"_",run,".RData",sep=""))
+      output_filename <- sprintf("res_wts_igrid_%i_%s_%s.RData",igrid,gcm,run)
+      save(res, file = paste(output_files_location, output_filename, sep=""))
     }
     
   }
@@ -157,7 +169,9 @@ rungridsep<-function(igrid=1,gcm="ipsl-cm5a-lr",run="rcp45",output="aggregated")
     
     agg$depth<-rep(params$depth,each=length(agg[,1]))
     
-    save(agg,file=paste("/../../rd/gem/private/fishmip_outputs/res_mts_agg_igrid_",igrid,"_",gcm,"_",run,".RData",sep=""))
+    output_filename <- sprintf("res_mts_agg_igrid_%i_%s_%s.RData", igrid, gcm, run)
+    
+    save(agg, file=paste(output_files_location, output_filename, sep=""))
     
     rm(TotalUbiomass,Ubiomass10plus,Ubiomass270plus,TotalUcatch,Ucatch10plus,Ucatch270plus,TotalVbiomass,Vbiomass10plus,Vbiomass270plus,TotalVcatch,Vcatch10plus,Vcatch270plus, TotalW)
     
@@ -176,7 +190,7 @@ rungridsep<-function(igrid=1,gcm="ipsl-cm5a-lr",run="rcp45",output="aggregated")
 ## Test run the model
 ptm=proc.time()
 options(warn=-1)
-rungridsep(igrid=1,gcm="ipsl-cm5a-lr",run="rcp60",output="aggregated")
+rungridsep(igrid=1,gcm="ipsl-cm5a-lr",run="rcp60",output="aggregated", output_files_location = "/rd/gem/private/justtest_fishmip_ouputs/")
 print((proc.time()-ptm)/60.0)
 # igrid=1
 # gcm="ipsl-cm5a-lr"
@@ -207,9 +221,11 @@ print((proc.time()-ptm)/60.0)
 ptm=proc.time()
 options(warn=-1) #?
 
-numcores=8
+numcores=47
 cl <- makeForkCluster(getOption("cl.cores", numcores))
-clusterApplyLB(cl,x=1:9,fun=rungridsep,gcm="ipsl-cm5a-lr",run="rcp60",output="aggregated")
+clusterApplyLB(cl, x=1:50, fun=rungridsep, gcm="ipsl-cm5a-lr", run="rcp60"
+               ,output="aggregated"
+               ,output_files_location = "/rd/gem/private/justtest_fishmip_ouputs/")
 stopCluster(cl)
 
 print((proc.time()-ptm)/60.0)
