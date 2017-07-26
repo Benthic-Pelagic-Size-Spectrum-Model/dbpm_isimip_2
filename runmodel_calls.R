@@ -19,7 +19,7 @@ clusterApplyLB(cl
                ,gcm="ipsl-cm5a-lr"
                ,run="rcp60"
                ,output="aggregated"
-               ,output_files_location = "/rd/gem/private/fishmip_ouputs/20170726_rcp60/")
+               ,output_files_location = "/rd/gem/private/fishmip_outputs/20170726_rcp60/")
 stopCluster(cl)
 
 print((proc.time()-ptm)/60.0)
