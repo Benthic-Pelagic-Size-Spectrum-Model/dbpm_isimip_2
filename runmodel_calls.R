@@ -2,7 +2,32 @@ rm(list=ls())
 
 library(parallel)
 
-source('/data/home/justb/GlobalModel/projects/fishmip/runmodel.R')
+source('runmodel.R')
+
+
+#26/7/17 VEN-466 fishmip rcp60 run, 
+#whole world: all 1:39567 cells
+#fishmip_ouputs/20170726_rcp60/
+ptm=proc.time()
+options(warn=-1) #?
+
+numcores=47
+cl <- makeForkCluster(getOption("cl.cores", numcores))
+clusterApplyLB(cl
+               ,x=1:39567
+               ,fun=rungridsep
+               ,gcm="ipsl-cm5a-lr"
+               ,run="rcp60"
+               ,output="aggregated"
+               ,output_files_location = "/rd/gem/private/fishmip_ouputs/20170726_rcp60/")
+stopCluster(cl)
+
+print((proc.time()-ptm)/60.0)
+
+rm(cl, numcores, ptm)
+
+
+
 
 
 ## Test run the model
