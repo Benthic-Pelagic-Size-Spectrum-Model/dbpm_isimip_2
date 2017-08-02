@@ -1,4 +1,6 @@
-source('/data/home/justb/GlobalModel/size-based-models/R/dynamic_sizebased_model_functions.R', chdir = TRUE)
+source("../../size-based-models/R/dynamic_sizebased_model_functions.R", chdir = TRUE)
+
+
 
 rungridsep <- function(igrid=1
                        ,gcm="ipsl-cm5a-lr"
