@@ -160,14 +160,14 @@ rungridsep <- function(igrid=1
       
       
       output_filename <- sprintf("res_mts_agg_igrid_%i_%s_%s.RData",igrid,gcm,run)
-      save(agg, file=paste(output_files_location, output_filename, sep=""))
+      save(agg, file=paste(output_files_location, output_filename, sep=""), compress = FALSE)
       
     }
     
     
     if (output!="aggregated") {
       output_filename <- sprintf("res_wts_igrid_%i_%s_%s.RData",igrid,gcm,run)
-      save(result_set, file = paste(output_files_location, output_filename, sep=""))
+      save(result_set, file = paste(output_files_location, output_filename, sep=""), compress = FALSE)
     }
     
   }
@@ -190,7 +190,7 @@ rungridsep <- function(igrid=1
     
     output_filename <- sprintf("res_mts_agg_igrid_%i_%s_%s.RData", igrid, gcm, run)
     
-    save(agg, file=paste(output_files_location, output_filename, sep=""))
+    save(agg, file=paste(output_files_location, output_filename, sep=""), compress = FALSE)
     
     rm(TotalUbiomass,Ubiomass10plus,Ubiomass270plus,TotalUcatch,Ucatch10plus,Ucatch270plus,TotalVbiomass,Vbiomass10plus,Vbiomass270plus,TotalVcatch,Vcatch10plus,Vcatch270plus, TotalW)
     
