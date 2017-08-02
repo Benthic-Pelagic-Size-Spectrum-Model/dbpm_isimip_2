@@ -1,9 +1,10 @@
 grid_ids_found <- function (thepath) {
   
   #TODO return NA  for path not exists
-  #TODO return 0 for no files found
   
   #retrieve filenames in a vector
+  
+  #thepath <- "/rd/gem/private/fishmip_outputs/20170802_trial/"
   filenames <-  data.frame(unlist(
     list.files(path = thepath, 
                pattern = "RData$",
@@ -12,8 +13,12 @@ grid_ids_found <- function (thepath) {
   
   names(filenames) <- "filename"
   
-  filenames$gridid <- as.numeric(stringr::str_match(filenames$filename, "igrid_(.+?)_")[,2])
+  if (nrow(filenames)==0){
+    retval <-  0
+  } else {
   
-  
-  return(filenames$gridid)
+    filenames$gridid <- as.numeric(stringr::str_match(filenames$filename, "igrid_(.+?)_")[,2])
+    retval <- filenames$gridid
+  }
+  return(retval)
 }
