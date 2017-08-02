@@ -19,7 +19,14 @@ library(ncdf4)
 # nc_close
 # when you are done.
 
-mknetcdf<-function(varname="tcb",description="Total biomass consumers",units="g C / m^2",gcm='ipsl-cm5a-lr',run="rcp85",gcmPath = '/../../rd/gem/private/GCM_INPUT/IPSL_CM5A_LR/',savetopath="/../../rd/gem/private/fishmip_outputs/",grids=1:39567){
+mknetcdf<-function(varname="tcb"
+                   ,description="Total biomass consumers"
+                   ,units="g C / m^2"
+                   ,gcm='ipsl-cm5a-lr'
+                   ,run="rcp85"
+                   ,gcmPath = '/../../rd/gem/private/GCM_INPUT/IPSL_CM5A_LR/'
+                   ,savetopath="/../../rd/gem/private/fishmip_outputs/"
+                   ,grids=1:39567){
   
   tme = "_monthly_200601_21001231.nc4"
   
