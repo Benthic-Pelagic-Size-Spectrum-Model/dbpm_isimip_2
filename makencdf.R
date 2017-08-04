@@ -1,8 +1,6 @@
 
 #----------------PUT FISH_MIP MODEL OUTPUTS INTO netcdf 4
-# library(ncdf)
 library(ncdf4)
-
 
 # If you want to WRITE data to a new netCDF file, the procedure is to first define the dimensions
 # your data array has, then define the variable, then create the file. So, first call
@@ -24,26 +22,32 @@ mknetcdf<-function(varname="tcb"
                    ,units="g C / m^2"
                    ,gcm='ipsl-cm5a-lr'
                    ,run="rcp85"
-                   ,gcmPath = '/../../rd/gem/private/GCM_INPUT/IPSL_CM5A_LR/'
-                   ,savetopath="/../../rd/gem/private/fishmip_outputs/"
-                   ,grids=1:39567){
+                   ,gcmPath = '/rd/gem/private/GCM_INPUT/IPSL_CM5A_LR/'
+                   ,savetopath="/rd/gem/private/fishmip_outputs/"
+                   ,grids=1:39567
+                   ,data_files_input_path = '/rd/gem/private/fishmip_outputs/20170730_rcp85/'){
   
   tme = "_monthly_200601_21001231.nc4"
   
   inFile <-c(paste(gcmPath,run,"/",gcm,"_",run,"_lpp_zint",tme,sep=""))
-  nc = open.ncdf(inFile, write=FALSE)
-  
-  lon <- get.var.ncdf(nc,'longitude')
-  lat <- get.var.ncdf(nc,'latitude')
-  t2 <- get.var.ncdf(nc,'time')
-  
+
+  #ncdf4 
+  nc <- nc_open(inFile, write=FALSE)
+
+  #ncdf4 
+  lon <- ncvar_get(nc,'longitude')
+  lat <- ncvar_get(nc,'latitude')
+  t2 <- ncvar_get(nc,'time')
   
   rm(nc)
   
   inFile <-c(paste(gcmPath,"historical","/",gcm,"_","historical","_lpp_zint","_monthly_195001_200512.nc4",sep=""))
-  nc = open.ncdf(inFile, write=FALSE)
+  nc = nc_open(inFile, write=FALSE)
+
+  #ncdf4 
+  nc <- nc_open(infile)  
   
-  t1 <- get.var.ncdf(nc,'TIME')
+  t1 <- ncvar_get(nc,'TIME')
   
   t <- c(t1,t2+length(t1))
   
@@ -57,13 +61,12 @@ mknetcdf<-function(varname="tcb"
   
   
   #------------------------------------------------------------- 
-  
-  # # Make a variable with those dimensions.  Note order: time is LAST
+    # # Make a variable with those dimensions.  Note order: time is LAST
   
   var.nc <- ncvar_def(varname, units, longname=description,  list(x,y,ti), 1.e20 )
   
   # 
-  
+  #savetopath <- "~/"
   ncnew <- nc_create(paste(savetopath,"dbpm_",gcm,"_",run,"_","no-fishing","_","no-oa","_",varname,".nc",sep=""), var.nc)
   
   
@@ -76,7 +79,9 @@ mknetcdf<-function(varname="tcb"
     
   # load(file=paste("~/fishmip_outputs/res_mts_agg_igrid_",igrid,"_",gcm,"_",run,".RData",sep=""))
     
-    load(file=paste("/../../rd/gem/private/fishmip_outputs/res_mts_agg_igrid_",igrid,"_",gcm,"_",run,".RData",sep=""))
+  # load(file=paste("/../../rd/gem/private/fishmip_outputs/res_mts_agg_igrid_",igrid,"_",gcm,"_",run,".RData",sep=""))
+    
+    load(file=paste(data_files_input_path, "res_mts_agg_igrid_",igrid,"_",gcm,"_",run,".RData",sep=""))
     
   # load the inputs to get lat , lon positions
     
@@ -91,27 +96,27 @@ mknetcdf<-function(varname="tcb"
     # cut2<-seq(from=(300*12+241),to=length(idx))
     
     # TOTAL system biomass density (tsb),g C m-2,all primary producers and consumers
-    if (varname=="tsb") var[paste(inputs$depth$lon),paste(inputs$depth$lat),1:length(cut)] <- (agg$TotalUbiomass[cut] + agg$TotalVbiomass[cut] + agg$TotalW[cut])
+    if (varname=="tsb")           var[paste(inputs$depth$lon),paste(inputs$depth$lat),1:length(cut)] <- (agg$TotalUbiomass[cut] + agg$TotalVbiomass[cut] + agg$TotalW[cut])
     
     # # TOTAL consumer biomass density (tbc),g C m-2, all consumers (trophic level >1, vertebrates and invertebrates)           
     
-    if (varname=="tcb") var[paste(inputs$depth$lon),paste(inputs$depth$lat),1:length(cut)] <- (agg$TotalUbiomass[cut] + agg$TotalVbiomass[cut])
+    if (varname=="tcb")           var[paste(inputs$depth$lon),paste(inputs$depth$lat),1:length(cut)] <- (agg$TotalUbiomass[cut] + agg$TotalVbiomass[cut])
     
     # # Biomass density (by functional group / size class) (Bi),g C m-2,Provide name of each size class (<class>) and functional group (<group>) used, and provide a  definition of each class/group 
     # 
-    if (varname=="b") var[paste(inputs$depth$lon),paste(inputs$depth$lat),1:length(cut)] <- agg$TotalUbiomass[cut] 
+    if (varname=="b")             var[paste(inputs$depth$lon),paste(inputs$depth$lat),1:length(cut)] <- agg$TotalUbiomass[cut] 
     
-    if (varname=="b10cm") var[paste(inputs$depth$lon),paste(inputs$depth$lat),1:length(cut)] <- agg$Ubiomass10plus[cut] 
+    if (varname=="b10cm")         var[paste(inputs$depth$lon),paste(inputs$depth$lat),1:length(cut)] <- agg$Ubiomass10plus[cut] 
     
-    if (varname=="b30cm") var[paste(inputs$depth$lon),paste(inputs$depth$lat),1:length(cut)] <- agg$Ubiomass270plus[cut] 
+    if (varname=="b30cm")         var[paste(inputs$depth$lon),paste(inputs$depth$lat),1:length(cut)] <- agg$Ubiomass270plus[cut] 
     # 
-    if (varname=="b-bendet") var[paste(inputs$depth$lon),paste(inputs$depth$lat),1:length(cut)] <- agg$TotalVbiomass[cut] 
+    if (varname=="b-bendet")      var[paste(inputs$depth$lon),paste(inputs$depth$lat),1:length(cut)] <- agg$TotalVbiomass[cut] 
     
-    if (varname=="b10cm-bendet") var[paste(inputs$depth$lon),paste(inputs$depth$lat),1:length(cut)] <- agg$Vbiomass10plus[cut] 
+    if (varname=="b10cm-bendet")  var[paste(inputs$depth$lon),paste(inputs$depth$lat),1:length(cut)] <- agg$Vbiomass10plus[cut] 
     # 
-    if (varname=="b30cm-bendet") var[paste(inputs$depth$lon),paste(inputs$depth$lat),1:length(cut)] <- agg$Vbiomass270plus[cut] 
+    if (varname=="b30cm-bendet")  var[paste(inputs$depth$lon),paste(inputs$depth$lat),1:length(cut)] <- agg$Vbiomass270plus[cut] 
     #  
-    if (varname=="bdet") var[paste(inputs$depth$lon),paste(inputs$depth$lat),1:length(cut)] <- agg$TotalW[cut]
+    if (varname=="bdet")          var[paste(inputs$depth$lon),paste(inputs$depth$lat),1:length(cut)] <- agg$TotalW[cut]
     # 
     # #total catches in functional groups
     # 
@@ -119,20 +124,20 @@ mknetcdf<-function(varname="tcb"
     # #and then they need to be converted to g ww per m^2 
     # 
     # # Total catch of all commerical groups, g m-2 wet weight, all consumers
-    if (varname=="tc") var[paste(inputs$depth$lon),paste(inputs$depth$lat),1:length(cut)] <- agg$TotalUcatch[cut] + agg$TotalVcatch[cut]
+    if (varname=="tc")            var[paste(inputs$depth$lon),paste(inputs$depth$lat),1:length(cut)] <- agg$TotalUcatch[cut] + agg$TotalVcatch[cut]
     # 
     # #catches in functional groups and size classes - these weight classes correspond to 10, 30 , 46 and 100 cm thresholds (e.g. biomass in these sizes and up)
     # 
     # 
     # # Catch (by functional group / size class) (Ci) ,g  m-2 wet weight
     # 
-    if (varname=="c10cm") var[paste(inputs$depth$lon),paste(inputs$depth$lat),1:length(cut)] <- agg$Ucatch10plus[cut]
+    if (varname=="c10cm")         var[paste(inputs$depth$lon),paste(inputs$depth$lat),1:length(cut)] <- agg$Ucatch10plus[cut]
     #   
-    if (varname=="c30cm") var[paste(inputs$depth$lon),paste(inputs$depth$lat),1:length(cut)] <- agg$Ucatch270plus[cut]
+    if (varname=="c30cm")         var[paste(inputs$depth$lon),paste(inputs$depth$lat),1:length(cut)] <- agg$Ucatch270plus[cut]
     #  
-    if (varname=="c10cm-bendet") var[paste(inputs$depth$lon),paste(inputs$depth$lat),1:length(cut)] <- agg$Vcatch10plus[cut]
+    if (varname=="c10cm-bendet")  var[paste(inputs$depth$lon),paste(inputs$depth$lat),1:length(cut)] <- agg$Vcatch10plus[cut]
     # 
-    if (varname=="c30cm-bendet") var[paste(inputs$depth$lon),paste(inputs$depth$lat),1:length(cut)] <- agg$Vcatch270plus[cut]
+    if (varname=="c30cm-bendet")  var[paste(inputs$depth$lon),paste(inputs$depth$lat),1:length(cut)] <- agg$Vcatch270plus[cut]
     #  
     # 
     # # Size spectrum slopes 
@@ -143,12 +148,7 @@ mknetcdf<-function(varname="tcb"
     #   #
     #   if (varname=="bss-bendet")  var[paste(inputs$depth$lon),paste(inputs$depth$lat),1:dim(agg)[1]]
     #   
-    
-    
-    
     print(igrid)
-    
-    
   }
   # end for loop
   
@@ -165,56 +165,3 @@ mknetcdf<-function(varname="tcb"
 }
 
 # end mknetcfd function
-
-# gcm ipsl, run rcp 85
-
-# mknetcdf(varname="tcb",description="Total consumer biomass density",units="g C / m^2",gcm='ipsl-cm5a-lr',run="rcp85",gcmPath = '/../../rd/gem/private/GCM_INPUT/IPSL_CM5A_LR/',savetopath="~/netcdfs/",grids=1:39567)
-# # mknetcdf(varname="b",description="Total pelagic predator biomass density",units="g C / m^2",gcm='ipsl-cm5a-lr',run="rcp85",gcmPath = '/../../rd/gem/private/GCM_INPUT/IPSL_CM5A_LR/',savetopath="~/netcdfs/",grids=1:39567)
-# # mknetcdf(varname="b-bendet",description="Total benthic detritivore biomass density",units="g C / m^2",gcm='ipsl-cm5a-lr',run="rcp85",gcmPath = '/../../rd/gem/private/GCM_INPUT/IPSL_CM5A_LR/',savetopath="~/netcdfs/",grids=1:39567)
-# mknetcdf(varname="tsb",description="Total system biomass density",units="g C / m^2",gcm='ipsl-cm5a-lr',run="rcp85",gcmPath = '/../../rd/gem/private/GCM_INPUT/IPSL_CM5A_LR/',savetopath="~/netcdfs/",grids=1:39567)
-# mknetcdf(varname="b10cm",description="Biomass density of pelagic predators > 10 cm",units="g C / m^2",gcm='ipsl-cm5a-lr',run="rcp85",gcmPath = '/../../rd/gem/private/GCM_INPUT/IPSL_CM5A_LR/',savetopath="~/netcdfs/",grids=1:39567)
-# mknetcdf(varname="b30cm",description="Biomass density of pelagic predators > 30 cm",units="g C / m^2",gcm='ipsl-cm5a-lr',run="rcp85",gcmPath = '/../../rd/gem/private/GCM_INPUT/IPSL_CM5A_LR/',savetopath="~/netcdfs/",grids=1:39567)
-# # mknetcdf(varname="b10cm-bendet",description="Biomass density of benthic detritivores > 10 cm",units="g C / m^2",gcm='ipsl-cm5a-lr',run="rcp85",gcmPath = '/../../rd/gem/private/GCM_INPUT/IPSL_CM5A_LR/',savetopath="~/netcdfs/",grids=1:39567)
-# # mknetcdf(varname="b30cm-bendet",description="Biomass density of benthic detritivores > 30 cm",units="g C / m^2",gcm='ipsl-cm5a-lr',run="rcp85",gcmPath = '/../../rd/gem/private/GCM_INPUT/IPSL_CM5A_LR/',savetopath="~/netcdfs/",grids=1:39567)
-# # mknetcdf(varname="bdet",description="Biomass density of detritus",units="g C / m^2",gcm='ipsl-cm5a-lr',run="rcp85",gcmPath = '/../../rd/gem/private/GCM_INPUT/IPSL_CM5A_LR/',savetopath="~/netcdfs/",grids=1:39567)
-
-# gcm ipsl, run rcp 45
-
-mknetcdf(varname="tcb",description="Total consumer biomass density",units="g C / m^2",gcm='ipsl-cm5a-lr',run="rcp45",gcmPath = '/../../rd/gem/private/GCM_INPUT/IPSL_CM5A_LR/',savetopath="~/netcdfs/",grids=1:39567)
-mknetcdf(varname="tsb",description="Total system biomass density",units="g C / m^2",gcm='ipsl-cm5a-lr',run="rcp45",gcmPath = '/../../rd/gem/private/GCM_INPUT/IPSL_CM5A_LR/',savetopath="~/netcdfs/",grids=1:39567)
-mknetcdf(varname="b10cm",description="Biomass density of pelagic predators > 10 cm",units="g C / m^2",gcm='ipsl-cm5a-lr',run="rcp45",gcmPath = '/../../rd/gem/private/GCM_INPUT/IPSL_CM5A_LR/',savetopath="~/netcdfs/",grids=1:39567)
-mknetcdf(varname="b30cm",description="Biomass density of pelagic predators > 30 cm",units="g C / m^2",gcm='ipsl-cm5a-lr',run="rcp45",gcmPath = '/../../rd/gem/private/GCM_INPUT/IPSL_CM5A_LR/',savetopath="~/netcdfs/",grids=1:39567)
-
-mknetcdf(varname="b10cm-bendet",description="Biomass density of benthic detritivores > 10 cm",units="g C / m^2",gcm='ipsl-cm5a-lr',run="rcp45",gcmPath = '/../../rd/gem/private/GCM_INPUT/IPSL_CM5A_LR/',savetopath="~/netcdfs/",grids=1:39567)
-mknetcdf(varname="b30cm-bendet",description="Biomass density of benthic detritivores > 30 cm",units="g C / m^2",gcm='ipsl-cm5a-lr',run="rcp45",gcmPath = '/../../rd/gem/private/GCM_INPUT/IPSL_CM5A_LR/',savetopath="~/netcdfs/",grids=1:39567)
-
-
-# gcm ipsl, run rcp 60
-
-mknetcdf(varname="tcb",description="Total consumer biomass density",units="g C / m^2",gcm='ipsl-cm5a-lr',run="rcp60",gcmPath = '/../../rd/gem/private/GCM_INPUT/IPSL_CM5A_LR/',savetopath="~/netcdfs/",grids=1:39567)
-mknetcdf(varname="tsb",description="Total system biomass density",units="g C / m^2",gcm='ipsl-cm5a-lr',run="rcp60",gcmPath = '/../../rd/gem/private/GCM_INPUT/IPSL_CM5A_LR/',savetopath="~/netcdfs/",grids=1:39567)
-mknetcdf(varname="b10cm",description="Biomass density of pelagic predators > 10 cm",units="g C / m^2",gcm='ipsl-cm5a-lr',run="rcp60",gcmPath = '/../../rd/gem/private/GCM_INPUT/IPSL_CM5A_LR/',savetopath="~/netcdfs/",grids=1:39567)
-mknetcdf(varname="b30cm",description="Biomass density of pelagic predators > 30 cm",units="g C / m^2",gcm='ipsl-cm5a-lr',run="rcp60",gcmPath = '/../../rd/gem/private/GCM_INPUT/IPSL_CM5A_LR/',savetopath="~/netcdfs/",grids=1:39567)
-
-mknetcdf(varname="b10cm-bendet",description="Biomass density of benthic detritivores > 10 cm",units="g C / m^2",gcm='ipsl-cm5a-lr',run="rcp60",gcmPath = '/../../rd/gem/private/GCM_INPUT/IPSL_CM5A_LR/',savetopath="~/netcdfs/",grids=1:39567)
-mknetcdf(varname="b30cm-bendet",description="Biomass density of benthic detritivores > 30 cm",units="g C / m^2",gcm='ipsl-cm5a-lr',run="rcp60",gcmPath = '/../../rd/gem/private/GCM_INPUT/IPSL_CM5A_LR/',savetopath="~/netcdfs/",grids=1:39567)
-
-# gcm ipsl, run rcp 26
-
-mknetcdf(varname="tcb",description="Total consumer biomass density",units="g C / m^2",gcm='ipsl-cm5a-lr',run="rcp26",gcmPath = '/../../rd/gem/private/GCM_INPUT/IPSL_CM5A_LR/',savetopath="~/netcdfs/",grids=1:39567)
-mknetcdf(varname="tsb",description="Total system biomass density",units="g C / m^2",gcm='ipsl-cm5a-lr',run="rcp26",gcmPath = '/../../rd/gem/private/GCM_INPUT/IPSL_CM5A_LR/',savetopath="~/netcdfs/",grids=1:39567)
-mknetcdf(varname="b10cm",description="Biomass density of pelagic predators > 10 cm",units="g C / m^2",gcm='ipsl-cm5a-lr',run="rcp26",gcmPath = '/../../rd/gem/private/GCM_INPUT/IPSL_CM5A_LR/',savetopath="~/netcdfs/",grids=1:39567)
-mknetcdf(varname="b30cm",description="Biomass density of pelagic predators > 30 cm",units="g C / m^2",gcm='ipsl-cm5a-lr',run="rcp26",gcmPath = '/../../rd/gem/private/GCM_INPUT/IPSL_CM5A_LR/',savetopath="~/netcdfs/",grids=1:39567)
-
-mknetcdf(varname="b10cm-bendet",description="Biomass density of benthic detritivores > 10 cm",units="g C / m^2",gcm='ipsl-cm5a-lr',run="rcp26",gcmPath = '/../../rd/gem/private/GCM_INPUT/IPSL_CM5A_LR/',savetopath="~/netcdfs/",grids=1:39567)
-mknetcdf(varname="b30cm-bendet",description="Biomass density of benthic detritivores > 30 cm",units="g C / m^2",gcm='ipsl-cm5a-lr',run="rcp26",gcmPath = '/../../rd/gem/private/GCM_INPUT/IPSL_CM5A_LR/',savetopath="~/netcdfs/",grids=1:39567)
-
-# gcm ipsl, run rcp 85
-
-mknetcdf(varname="tcb",description="Total consumer biomass density",units="g C / m^2",gcm='ipsl-cm5a-lr',run="rcp85",gcmPath = '/../../rd/gem/private/GCM_INPUT/IPSL_CM5A_LR/',savetopath="~/netcdfs/",grids=1:39567)
-mknetcdf(varname="tsb",description="Total system biomass density",units="g C / m^2",gcm='ipsl-cm5a-lr',run="rcp85",gcmPath = '/../../rd/gem/private/GCM_INPUT/IPSL_CM5A_LR/',savetopath="~/netcdfs/",grids=1:39567)
-mknetcdf(varname="b10cm",description="Biomass density of pelagic predators > 10 cm",units="g C / m^2",gcm='ipsl-cm5a-lr',run="rcp85",gcmPath = '/../../rd/gem/private/GCM_INPUT/IPSL_CM5A_LR/',savetopath="~/netcdfs/",grids=1:39567)
-mknetcdf(varname="b30cm",description="Biomass density of pelagic predators > 30 cm",units="g C / m^2",gcm='ipsl-cm5a-lr',run="rcp85",gcmPath = '/../../rd/gem/private/GCM_INPUT/IPSL_CM5A_LR/',savetopath="~/netcdfs/",grids=1:39567)
-
-mknetcdf(varname="b10cm-bendet",description="Biomass density of benthic detritivores > 10 cm",units="g C / m^2",gcm='ipsl-cm5a-lr',run="rcp85",gcmPath = '/../../rd/gem/private/GCM_INPUT/IPSL_CM5A_LR/',savetopath="~/netcdfs/",grids=1:39567)
-mknetcdf(varname="b30cm-bendet",description="Biomass density of benthic detritivores > 30 cm",units="g C / m^2",gcm='ipsl-cm5a-lr',run="rcp85",gcmPath = '/../../rd/gem/private/GCM_INPUT/IPSL_CM5A_LR/',savetopath="~/netcdfs/",grids=1:39567)
