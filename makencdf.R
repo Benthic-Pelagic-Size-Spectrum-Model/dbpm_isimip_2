@@ -17,83 +17,83 @@ library(ncdf4)
 # nc_close
 # when you are done.
 
-mknetcdf<-function(varname="tcb"
-                   ,description="Total biomass consumers"
-                   ,units="g C / m^2"
-                   ,gcm='ipsl-cm5a-lr'
-                   ,run="rcp85"
+mknetcdf<-function(varname = "tcb"
+                   ,description = "Total biomass consumers"
+                   ,units = "g C / m^2"
+                   ,gcm = 'ipsl-cm5a-lr'
+                   ,run = "rcp85"
                    ,gcmPath = '/rd/gem/private/GCM_INPUT/IPSL_CM5A_LR/'
-                   ,savetopath="/rd/gem/private/fishmip_outputs/"
-                   ,grids=1:39567
-                   ,data_files_input_path = '/rd/gem/private/fishmip_outputs/20170730_rcp85/'){
+                   ,savetopath=""
+                   ,grids = 1:39567
+                   ,data_path = '/rd/gem/private/fishmip_outputs/aug_2017/'){
   
-  tme = "_monthly_200601_21001231.nc4"
+  if (savetopath=="") savetopath <- data_path
   
-  inFile <-c(paste(gcmPath,run,"/",gcm,"_",run,"_lpp_zint",tme,sep=""))
-
-  #ncdf4 
-  nc <- nc_open(inFile, write=FALSE)
-
-  #ncdf4 
+  #get lon, lat and time from inputfile
+  tme  =  "_monthly_200601_21001231.nc4"
+  
+  inFile <-c(paste(gcmPath,run,"/",gcm,"_",run,"_lpp_zint",tme,sep = ""))
+  nc <- nc_open(inFile, write = FALSE)
   lon <- ncvar_get(nc,'longitude')
   lat <- ncvar_get(nc,'latitude')
   t2 <- ncvar_get(nc,'time')
   
   rm(nc)
   
-  inFile <-c(paste(gcmPath,"historical","/",gcm,"_","historical","_lpp_zint","_monthly_195001_200512.nc4",sep=""))
-  nc = nc_open(inFile, write=FALSE)
-
-  #ncdf4 
-  nc <- nc_open(infile)  
+  #get additional time from historical file
+  inFile <-c(paste(gcmPath,"historical","/",gcm,"_","historical","_lpp_zint","_monthly_195001_200512.nc4",sep = ""))
+  nc  =  nc_open(inFile, write = FALSE)
+  nc <- nc_open(inFile)  
   
   t1 <- ncvar_get(nc,'TIME')
   
+  #construct time from inputfile time and historical time
   t <- c(t1,t2+length(t1))
   
   rm(nc,t1,t2)
   
-  
   # Define some straightforward dimensions
   x <- ncdim_def( "lon", "degreesE", lon)
   y <- ncdim_def( "lat", "degreesN", lat)
-  ti <- ncdim_def( "time", "months since 1950-01-01", t, unlim=TRUE)
+  ti <- ncdim_def( "time", "months since 1950-01-01", t, unlim = TRUE)
   
   
   #------------------------------------------------------------- 
-    # # Make a variable with those dimensions.  Note order: time is LAST
+  # # Make a variable with those dimensions.  Note order: time is LAST
   
-  var.nc <- ncvar_def(varname, units, longname=description,  list(x,y,ti), 1.e20 )
+  var.nc <- ncvar_def(varname, units, longname = description,  list(x,y,ti), 1.e20 )
   
   # 
   #savetopath <- "~/"
-  ncnew <- nc_create(paste(savetopath,"dbpm_",gcm,"_",run,"_","no-fishing","_","no-oa","_",varname,".nc",sep=""), var.nc)
+  #full_file_name <- paste(savetopath, "dbpm_", gcm, "_",run,"_","no-fishing","_","no-oa","_",varname,".nc",sep = "")
+  full_file_name <- sprintf("%sdbpm_%s_%s_no-fishing_no-oa_%s.nc", savetopath, gcm, run, varname)
+  
+  ncnew <- nc_create(full_file_name, var.nc)
   
   
   # get the gridded outputs for that variable from each model run 
-  
-  var<-array(NA,dim=c(length(lon),length(lat),length(t)),dimnames=list(lon,lat,t))
+  var <- array(NA, dim = c(length(lon), length(lat), length(t)), dimnames = list(lon,lat,t))
   
   for (igrid in grids) {
     
     
-  # load(file=paste("~/fishmip_outputs/res_mts_agg_igrid_",igrid,"_",gcm,"_",run,".RData",sep=""))
+  # load(file = paste("~/fishmip_outputs/res_mts_agg_igrid_",igrid,"_",gcm,"_",run,".RData",sep = ""))
     
-  # load(file=paste("/../../rd/gem/private/fishmip_outputs/res_mts_agg_igrid_",igrid,"_",gcm,"_",run,".RData",sep=""))
-    
-    load(file=paste(data_files_input_path, "res_mts_agg_igrid_",igrid,"_",gcm,"_",run,".RData",sep=""))
+  # load(file = paste("/../../rd/gem/private/fishmip_outputs/res_mts_agg_igrid_",igrid,"_",gcm,"_",run,".RData",sep = ""))
+  data_filename <- sprintf("%s/%s/res_mts_agg_igrid_%i_%s_%s.RData", data_path, run, igrid, gcm, run)
+      load(data_filename)
     
   # load the inputs to get lat , lon positions
-    
-    load(paste("/../../rd/gem/private/fishmip_inputs/grid_",igrid,"_inputs2_",gcm,"_",run,".RData",sep=""))
+  input_filename <- sprintf("/rd/gem/private/fishmip_inputs/grid_%i_inputs2_%s_%s.RData", igrid, gcm, run)
+    load(input_filename)
     
   # check indexing
     
-    idx<-seq(from=1,to=(dim(inputs$ts)[1]),4)
+    idx <- seq(from=1, to=(dim(inputs$ts)[1]),4)
     # 1950 onwards
-    cut<-seq(from=(300*12+1),to=length(idx))
+    cut <- seq(from=(300*12+1),to=length(idx))
     # 1970 onwards
-    # cut2<-seq(from=(300*12+241),to=length(idx))
+    # cut2 <- seq(from = (300*12+241),to = length(idx))
     
     # TOTAL system biomass density (tsb),g C m-2,all primary producers and consumers
     if (varname=="tsb")           var[paste(inputs$depth$lon),paste(inputs$depth$lat),1:length(cut)] <- (agg$TotalUbiomass[cut] + agg$TotalVbiomass[cut] + agg$TotalW[cut])
@@ -153,11 +153,10 @@ mknetcdf<-function(varname="tcb"
   # end for loop
   
   # save var as R file 
-  
-  save(var,file=paste(savetopath,"dbpm_",gcm,"_",run,"_","no-fishing","_","no-oa","_",varname,".RData",sep=""))
+  #save(var,file = paste(savetopath,"dbpm_",gcm,"_",run,"_","no-fishing","_","no-oa","_",varname,".RData",sep = ""))
   
   # # write full array (tsc from above) to netcdf 
-  ncvar_put(ncnew,var.nc, var )
+  ncvar_put(ncnew, var.nc, var)
   # 
   # # close netcdf file 
   nc_close(ncnew) 

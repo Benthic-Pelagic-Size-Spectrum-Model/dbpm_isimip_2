@@ -1,15 +1,104 @@
 
 source("./makencdf.R")
 
+# gcm ipsl, run rcp 26
+
 mknetcdf(varname="tcb"
          ,description="Total consumer biomass density"
-         ,units="g C / m^2"
-         ,gcm='ipsl-cm5a-lr'
-         ,run="rcp45"
-         ,gcmPath = '/rd/gem/private/GCM_INPUT/IPSL_CM5A_LR/'
-         ,savetopath="~/netcdfs/"
-         ,grids=1:39567
-         ,data_files_input_path="/rd/gem/private/fishmip_outputs/20170730_rcp85/")
+         ,run="rcp26")
+
+mknetcdf(varname="tsb"
+         ,description="Total system biomass density"
+         ,run="rcp26")
+
+mknetcdf(varname="b10cm"
+         ,description="Biomass density of pelagic predators > 10 cm"
+         ,run="rcp26")
+
+mknetcdf(varname="b30cm"
+         ,description="Biomass density of pelagic predators > 30 cm"
+         ,run="rcp26")
+
+mknetcdf(varname="b10cm-bendet"
+         ,description="Biomass density of benthic detritivores > 10 cm"
+         ,run="rcp26")
+
+mknetcdf(varname="b30cm-bendet"
+         ,description="Biomass density of benthic detritivores > 30 cm"
+         ,run="rcp26")
+
+# gcm ipsl, run rcp 45
+
+mknetcdf(varname="tcb"
+         ,description="Total consumer biomass density"
+         ,run="rcp45")
+mknetcdf(varname="tsb"
+         ,description="Total system biomass density"
+         ,run="rcp45")
+mknetcdf(varname="b10cm"
+         ,description="Biomass density of pelagic predators > 10 cm"
+         ,run="rcp45")
+mknetcdf(varname="b30cm"
+         ,description="Biomass density of pelagic predators > 30 cm"
+         ,run="rcp45")
+
+mknetcdf(varname="b10cm-bendet"
+         ,description="Biomass density of benthic detritivores > 10 cm"
+         ,run="rcp45")
+mknetcdf(varname="b30cm-bendet"
+         ,description="Biomass density of benthic detritivores > 30 cm"
+         ,run="rcp45")
+
+
+# gcm ipsl, run rcp 60
+
+mknetcdf(varname="tcb"
+         ,description="Total consumer biomass density"
+         ,run="rcp60")
+mknetcdf(varname="tsb"
+         ,description="Total system biomass density"
+         ,run="rcp60")
+mknetcdf(varname="b10cm"
+         ,description="Biomass density of pelagic predators > 10 cm"
+         ,run="rcp60")
+mknetcdf(varname="b30cm"
+         ,description="Biomass density of pelagic predators > 30 cm"
+         ,run="rcp60")
+
+mknetcdf(varname="b10cm-bendet"
+         ,description="Biomass density of benthic detritivores > 10 cm"
+         ,run="rcp60")
+mknetcdf(varname="b30cm-bendet"
+         ,description="Biomass density of benthic detritivores > 30 cm"
+         ,run="rcp60")
+
+# gcm ipsl, run rcp 85
+mknetcdf(varname="tcb"
+         ,description="Total consumer biomass density"
+         ,run="rcp85"
+         ,data_path="/rd/gem/private/fishmip_outputs/aug_2017/")
+
+mknetcdf(varname="tsb"
+         ,description="Total system biomass density"
+         ,run="rcp85")
+
+mknetcdf(varname="b10cm"
+         ,description="Biomass density of pelagic predators > 10 cm"
+         ,run="rcp85")
+
+mknetcdf(varname="b30cm"
+         ,description="Biomass density of pelagic predators > 30 cm"
+         ,run="rcp85")
+
+mknetcdf(varname="b10cm-bendet"
+         ,description="Biomass density of benthic detritivores > 10 cm"
+         ,run="rcp85")
+
+mknetcdf(varname="b30cm-bendet"
+         ,description="Biomass density of benthic detritivores > 30 cm"
+         ,run="rcp85")
+
+
 
 # gcm ipsl, run rcp 85
 
