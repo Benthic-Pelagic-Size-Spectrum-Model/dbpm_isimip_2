@@ -12,15 +12,22 @@ ptm=proc.time()
 options(warn=-1) #?
 
 numcores=47
+
 cl <- makeForkCluster(getOption("cl.cores", numcores))
 clusterApplyLB(cl
-               ,x=12486:39567
+               ,x=1:39567
                ,fun=rungridsep
                ,gcm="ipsl-cm5a-lr"
                ,run="rcp85"
                ,output="aggregated"
                ,output_files_location = "/rd/gem/private/fishmip_outputs/20170730_rcp85/")
+
+
+
+
 stopCluster(cl)
+
+
 
 print((proc.time()-ptm)/60.0)
 

@@ -1,4 +1,4 @@
-source("../../size-based-models/R/dynamic_sizebased_model_functions.R", chdir = TRUE)
+source("size-based-models/dynamic_sizebased_model_functions.R", chdir = TRUE)
 
 
 
@@ -6,8 +6,8 @@ rungridsep <- function(igrid=1
                        ,gcm="ipsl-cm5a-lr"
                        ,run="rcp45"
                        ,output="aggregated"
-                       ,input_files_location = "/../../rd/gem/private/fishmip_inputs/"
-                       ,output_files_location = "/../../rd/gem/private/fishmip_outputs/") {
+                       ,input_files_location = "/rd/gem/private/fishmip_inputs/"
+                       ,output_files_location = "/rd/gem/private/fishmip_outputs/") {
   
   # we need to run the model with time-varying inputs   
   # the largest dt of the model is a monthly time step (Q-F was daily...which may still be needed) 
