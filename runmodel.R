@@ -1,5 +1,5 @@
 source("size-based-models/dynamic_sizebased_model_functions.R", chdir = TRUE)
-
+source("helpers.R")
 
 
 rungridsep <- function(igrid=1
@@ -22,29 +22,28 @@ rungridsep <- function(igrid=1
   
   if (gcm =="reanalysis"){
     
-    input_filename <- sprintf("grid_%i_inputs_%s_%s.RData", igrid, gcm, run)
+    input_filename <- sprintf("%sgrid_%i_inputs_%s_%s.RData", input_files_location, igrid, gcm, run)
     
-    load(paste(input_files_location, input_filename, sep=""))
+    load(input_filename)
     
   } else {
     
-    input_filename <- sprintf("grid_%i_inputs2_%s_%s.RData", igrid, gcm, run)
+    input_filename <- sprintf("%sgrid_%i_inputs2_%s_%s.RData", input_files_location, igrid, gcm, run)
     
-    load(paste(input_files_location, input_filename, sep=""))
+    load(input_filename)
 
     #plot(inputs$ts$sst) 
     
-    historical_means <- colMeans(inputs$ts[(301*48):(300*48+55*48),])
+    #historical_means <- colMeans(inputs$ts[(301*48):(300*48+55*48),])
+    historical_means <- colMeans(inputs$ts[start_of_history_weeks:end_of_history_weeks,])
     
     #replace spinup if different from historical_means
-    
-    inputs$ts[1:(300*48),"sst"] <- historical_means["sst"]
-    inputs$ts[1:(300*48),"sbt"] <- historical_means["sbt"]
-    inputs$ts[1:(300*48),"er"] <- historical_means["er"]
-    inputs$ts[1:(300*48),"intercept"] <- historical_means["intercept"]
-    inputs$ts[1:(300*48),"slope"] <- historical_means["slope"]
+    inputs$ts[start_of_spinup_weeks:end_of_spinup_weeks,"sst"] <- historical_means["sst"]
+    inputs$ts[start_of_spinup_weeks:end_of_spinup_weeks,"sbt"] <- historical_means["sbt"]
+    inputs$ts[start_of_spinup_weeks:end_of_spinup_weeks,"er"] <- historical_means["er"]
+    inputs$ts[start_of_spinup_weeks:end_of_spinup_weeks,"intercept"] <- historical_means["intercept"]
+    inputs$ts[start_of_spinup_weeks:end_of_spinup_weeks,"slope"] <- historical_means["slope"]
     rm(historical_means)
-    
   }
   
   #get params 
@@ -159,15 +158,15 @@ rungridsep <- function(igrid=1
       agg[1,1:13] <- agg[,1:13] * min(agg$depth[],100)
       
       
-      output_filename <- sprintf("res_mts_agg_igrid_%i_%s_%s.RData",igrid,gcm,run)
-      save(agg, file=paste(output_files_location, output_filename, sep=""), compress = FALSE)
+      output_filename <- sprintf("%sres_mts_agg_igrid_%i_%s_%s.RData", output_files_location, igrid, gcm, run)
+      save(agg, file=output_filename, compress = FALSE)
       
     }
     
     
     if (output!="aggregated") {
-      output_filename <- sprintf("res_wts_igrid_%i_%s_%s.RData",igrid,gcm,run)
-      save(result_set, file = paste(output_files_location, output_filename, sep=""), compress = FALSE)
+      output_filename <- sprintf("%sres_wts_igrid_%i_%s_%s.RData",output_files_location, igrid, gcm, run)
+      save(result_set, file = output_filename, compress = FALSE)
     }
     
   }

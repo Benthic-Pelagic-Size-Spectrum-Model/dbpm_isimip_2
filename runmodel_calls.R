@@ -3,7 +3,7 @@ rm(list=ls())
 library(parallel)
 
 source('runmodel.R')
-source('runmodel_helpers.R')
+source('helpers.R')
 
 #30/7/17 VEN-482 fishmip rcp85 run, 
 #whole world: all 1:39567 cells
