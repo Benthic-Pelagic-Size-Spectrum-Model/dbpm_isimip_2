@@ -1,0 +1,7 @@
+"varname", "description", "units"
+"tcb", "Total consumer biomass density", "g C / m^2"
+"tsb", "Total system biomass density", "g C / m^2"
+"b10cm", "Biomass density of pelagic predators > 10 cm", "g C / m^2"
+"b30cm", "Biomass density of pelagic predators > 30 cm", "g C / m^2"
+"b10cm-bendet", "Biomass density of benthic detritivores > 10 cm", "g C / m^2"
+"b30cm-bendet", "Biomass density of benthic detritivores > 30 cm", "g C / m^2"
