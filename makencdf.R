@@ -147,8 +147,11 @@ mknetcdf<-function(varname = "tcb"
     #   if (varname=="bss-pelpred") var[paste(inputs$depth$lon),paste(inputs$depth$lat),1:dim(agg)[1]]
     #   #
     #   if (varname=="bss-bendet")  var[paste(inputs$depth$lon),paste(inputs$depth$lat),1:dim(agg)[1]]
-    #   
-    print(igrid)
+    #
+    #print every 100th (and the very last) igrid as progress indicator 
+    if (igrid%%100 == 0 | igrid == length(grids))
+      print(paste(run, varname, igrid))    
+    
   }
   # end for loop
   
