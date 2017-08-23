@@ -1,9 +1,10 @@
 #rm(list=ls())
 
+source("helpers.R")
 
 findzeros <- function(filename, path = "./") {
   load(paste(path, "/", filename, sep=""))
-  return(any(agg$TotalUbiomass[3600:4200] == 0) )
+  return(any(agg$TotalUbiomass[start_of_history:end_of_history] == 0) )
   
 }
 
@@ -11,8 +12,8 @@ findzeros <- function(filename, path = "./") {
 #test files
 #outputfiles_path <- "/rd/gem/private/justtest_fishmip_ouputs"
 
-#rcp60 run
-outputfiles_path <- "/rd/gem/private/fishmip_outputs/20170726_rcp60/"
+#rcp run
+outputfiles_path <- "/rd/gem/private/fishmip_outputs/aug_2017/rcp45/"
 
 #retrieve filenames in a vector
 vec_filenames <-  unlist(
@@ -31,7 +32,8 @@ if (exists("df_all_files")) {
   names(df_new_files) <- "filename"
   
 } else {
-  df_new_files <- df_filenames
+  df_new_files <- data.frame(df_filenames,stringsAsFactors = FALSE)
+  names(df_new_files) <- "filename"
   
 }
 
@@ -39,12 +41,17 @@ if (exists("df_all_files")) {
 df_new_files$zeros <- sapply(df_new_files[,1]
                              ,findzeros
                              ,path=outputfiles_path
-)
-df_new_files$gridid <- as.numeric(gsub("(res_mts_agg_igrid_|_ipsl-cm5a-lr_rcp60.RData)", "", df_new_files[,1]))
+          )
 
+df_new_files$gridid <- as.numeric(gsub("(res_mts_agg_igrid_|_ipsl-cm5a-lr_rcp45.RData)", "", df_new_files[,1]))
 
+if (exists("df_all_files")) {
 df_all_files <- rbind(df_all_files, df_new_files[,c("filename","gridid","zeros")])
-
+} else
+{
+  df_all_files <- df_new_files[,c("filename","gridid","zeros")]
+  
+}
 rm(df_new_files,df_filenames, vec_filenames)
 rm(outputfiles_path, findzeros)
 
@@ -63,10 +70,6 @@ head(df_all_files[df_all_files$zeros==TRUE,])
 rm( total, zeros)
 
 
-
-
-
-
 load("/rd/gem/private/fishmip_inputs/depth_ipsl-cm5a-lr_historical.RData")
 
 #it looks like depth$gridnum is not a strict sequence of cells from 1:39567
@@ -74,6 +77,9 @@ load("/rd/gem/private/fishmip_inputs/depth_ipsl-cm5a-lr_historical.RData")
 #presumably 360 * 180 = 64800
 # im adding an attribute gridid as a ordered sequence to depth
 #assuming that that sequnece corresponds with the sequnece in the rcp60 run
+
+
+head(depth)
 
 depth$gridid[order(depth$gridnum)] <- 1:nrow(depth)
 
@@ -100,7 +106,7 @@ ggplot(all_files_with_depth, aes(x=lon, y=lat, colour=zeros)) + geom_point()
 ggplot(all_files_with_depth, aes(x=lon, y=lat, fill=zeros)) + geom_raster() 
 
 
-df_all_files_rcp60run <- all_files_with_depth
-save(df_all_files_rcp60run, file="/rd/gem/private/fishmip_zero_problem/df_all_files_rcp60run.RData")
+df_all_files_rcp45run <- all_files_with_depth
+save(df_all_files_rcp45run, file="/rd/gem/private/fishmip_zero_problem/df_all_files_rcp45run.RData")
 
 
