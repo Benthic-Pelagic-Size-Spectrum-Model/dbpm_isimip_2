@@ -1,7 +1,7 @@
 context("dbpm fishmip model run code ")
 
 test_that("model date boundaries are as expected",{
-  source("../model_date_boundaries.R", local = TRUE)
+  source("../helpers.R", local = TRUE)
   
   expect_that(start_of_spinup, equals(1))
   expect_that(end_of_spinup, equals(300*12))
@@ -18,5 +18,3 @@ test_that("model date boundaries are as expected",{
   expect_that(end_of_projections_weeks, equals(21645))  
   
 })
-
-
