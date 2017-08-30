@@ -1,8 +1,8 @@
 library(ggplot2)
 
-global_mean <- function(run, varname){
+global_mean <- function(run, varname, nc_path="/rd/gem/private/fishmip_outputs/aug_2017_2/netcdf"){
 
-  nc_filename <- sprintf("/rd/gem/private/fishmip_outputs/aug_2017_2/netcdf/dbpm_ipsl-cm5a-lr_%s_no-fishing_no-oa_%s.nc", run, varname)
+  nc_filename <- sprintf("%s/dbpm_ipsl-cm5a-lr_%s_no-fishing_no-oa_%s.nc", nc_path, run, varname)
   
   nc <- ncdf4::nc_open(nc_filename, write = FALSE)
   
@@ -23,7 +23,7 @@ global_mean <- function(run, varname){
   return (my_mean)
 }
 
-plot_global_means <- function(runs, varname){
+plot_global_means <- function(runs, varname, nc_path="/rd/gem/private/fishmip_outputs/aug_2017_2/netcdf"){
   source("helpers.R", local = TRUE)
   numcores <- length(runs)
   the_cluster <- parallel::makeForkCluster(getOption("cl.cores", numcores))
@@ -31,7 +31,8 @@ plot_global_means <- function(runs, varname){
   output <- parallel::clusterApplyLB(the_cluster
                                      ,x=runs
                                      ,fun=global_mean
-                                     ,varname=varname)
+                                     ,varname=varname
+                                     ,nc_path=nc_path)
   
   parallel::stopCluster(the_cluster)
   
