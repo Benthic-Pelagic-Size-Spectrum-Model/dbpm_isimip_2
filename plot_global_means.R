@@ -41,12 +41,13 @@ plot_global_means <- function(runs, varname, nc_path="/rd/gem/private/fishmip_ou
   df$timestep <- as.numeric(rownames(df))
   
   df <- reshape2::melt(df, id="timestep", variable.name = "scenario", value.name = "value")
-  
-  
+
+  months <- seq(as.Date("1950/1/1"),as.Date("2100/12/31"), by = "month")  
+  months[start_of_projections - end_of_spinup]
   the_plot <- ggplot(df) + 
-    geom_line(aes(x=timestep, y=value, colour=scenario)) +
+    geom_line(aes(x=months[timestep], y=value, colour=scenario)) +
     scale_colour_manual(values=c("red","green","black", "blue")) + 
-    geom_vline(xintercept = start_of_projections - end_of_spinup, col = "red", linetype="dotted") + 
+    geom_vline(xintercept = as.numeric(months[start_of_projections - end_of_spinup]), col = "red", linetype="dotted") + 
     xlab('time') +
     ylab(varname)
 
