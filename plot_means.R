@@ -1,0 +1,108 @@
+library(ggplot2)
+library(raster)
+library(rgdal)
+#install.packages("gridExtra")
+
+library(gridExtra)
+
+area_means <- function(run, varname, nc_path="/rd/gem/private/fishmip_outputs/aug_2017_2/netcdf", area="Global"){
+
+#  nc_path="/rd/gem/private/fishmip_outputs/aug_2017_2/netcdf"
+#  run <- "rcp26"
+#  varname <- "tcb"
+  
+  nc_filename <- sprintf("%s/dbpm_ipsl-cm5a-lr_%s_no-fishing_no-oa_%s.nc", nc_path, run, varname)
+  
+  the_brick <- brick(nc_filename)
+
+  if (area=="AusEEZ") {
+    
+    eez_dsn <- "/rd/gem/private/fishmip_inputs/misc/Seas and Submerged Lands Act 1973/Seas and Submerged Lands Act 1973.gdb"
+    eez <- readOGR(dsn=eez_dsn, layer="Exclusive_Economic_Zone_Amended_By_Perth_Treaty_1997_AMB2014a_Area")
+    
+    eez <- spTransform(eez, "+init=epsg:4326")
+    
+    #plot(eez, col="firebrick")
+    #TODO decide how to  deal with Antarctic component of EEZ
+    
+    #optimisation:
+    #crop away all of the brick outside of the MBR of the eez
+    the_brick <- crop(the_brick, eez) 
+    
+    the_brick <- mask(the_brick, eez)
+  }
+  
+#  plot(the_brick[[1]])
+#  plot(masked_brick[[1]])  # gives viz of extent
+#  plot(masked_brick[[6]])  # gives viz of extent
+  
+  my_means <- data.frame(cellStats(the_brick, mean))
+  names(my_means) <- run
+
+  return (my_means)
+}
+
+plot_area_means <- function(runs, varname, nc_path="/rd/gem/private/fishmip_outputs/aug_2017_2/netcdf", area="Global", smooth=FALSE){
+  
+#  varname <- "tcb"
+#  runs <- c("rcp26","rcp45","rcp60","rcp85")
+#  nc_path="/rd/gem/private/fishmip_outputs/aug_2017_2/netcdf"
+  
+  source("helpers.R", local = TRUE)
+  numcores <- length(runs)
+  the_cluster <- parallel::makeForkCluster(getOption("cl.cores", numcores))
+  
+  output <- parallel::clusterApplyLB(the_cluster
+                                     ,x=runs
+                                     ,fun=area_means
+                                     ,varname=varname
+                                     ,nc_path=nc_path
+                                     ,area=area)
+  
+  parallel::stopCluster(the_cluster)
+  
+  
+  df <- do.call("cbind", output)
+  df$timestep <- seq.int(nrow(df))
+  
+  df <- reshape2::melt(df, id="timestep", variable.name = "scenario", value.name = "value")
+
+  months <- seq(as.Date("1950/1/1"),as.Date("2100/12/31"), by = "month")  
+  #months[start_of_projections - end_of_spinup]
+  
+  the_title <- area
+  if (smooth) the_title <- paste(the_title, "with smoothing")
+
+  the_plot <- ggplot(df) 
+  the_plot <-  the_plot + ggtitle(the_title)
+  if(smooth==TRUE)
+    the_plot <- the_plot + geom_smooth(aes(x=months[timestep], y=value, colour=scenario),  method = 'loess')
+  else
+    the_plot <- the_plot + geom_line(aes(x=months[timestep], y=value, colour=scenario))
+  
+    
+  the_plot <- the_plot + scale_colour_manual(values=c("red","green","black", "blue")) + 
+    geom_vline(xintercept = as.numeric(months[start_of_projections - end_of_spinup]), col = "red", linetype="dotted") + 
+    xlab('time') +
+    ylab(varname)
+
+  return(the_plot)
+}
+
+myvar <- "tcb"
+myruns <- c("rcp26","rcp45","rcp60","rcp85")
+#myruns <- c("rcp85")
+
+
+p1 <- plot_area_means(myruns, myvar, smooth = TRUE)
+p2 <- plot_area_means(myruns, myvar)
+p3 <- plot_area_means(myruns, myvar, area="AusEEZ", smooth = TRUE)
+p4 <- plot_area_means(myruns, myvar, area="AusEEZ")
+
+gridExtra::grid.arrange(p1, p2, p3, p4, ncol=2)
+
+
+
+
+
+
