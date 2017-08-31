@@ -173,26 +173,28 @@ sizemodel<-function(params,ERSEM.det.input=F,U_mat,V_mat,W_mat,temp.effect=T,eps
         return(list(U=U[,],GG.u=GG.u[,],PM.u=PM.u[,],V=V[,],GG.v=GG.v[,],PM.v=PM.v[,],Y.u=Y.u[,],Y.v=Y.v[,],W=W[], params=params))	
       }
       
+      #  ONLY IF RUNNING TO EQUILIBRIUM:
       #  below is to skip unecessary timesteps if model has reached equilibirum 
-      if(i>100)
-      {
-        # browser()
-        if(max(abs((log(U[-c(1:91),(i-1)]))-(log(U[-c(1:91),(i-2)]))))<eps
-           &max(abs((log(V[-c(1:91),(i-1)]))-(log(V[-c(1:91),(i-2)]))))<eps
-           &(abs((log(W[(i-1)]))-(log(W[(i-2)]))))<eps)
-        {
-          U[,Neq]<-U[,i-1]
-          PM.v[,Neq]<-PM.v[,i-1]
-          GG.v[,Neq]<-GG.v[,i-1]
-          V[,Neq]<-V[,i-1]
-          PM.u[,Neq]<-PM.u[,i-1]
-          GG.u[,Neq]<-GG.u[,i-1]
-          Y.u[,Neq]<-Y.u[,i-1]
-          Y.v[,Neq]<-Y.v[,i-1]
-          W[Neq]<-W[i-1]
-          return(list(U=U[,],GG.u=GG.u[,],PM.u=PM.u[,],V=V[,],GG.v=GG.v[,],PM.v=PM.v[,],Y.u=Y.u[,],Y.v=Y.v[,],W=W[], params=params))	
-        }
-      }
+      # if(i>100 & equilibrium==T )
+      # {
+      #   # browser()
+      #   if(max(abs((log(U[-c(1:91),(i-1)]))-(log(U[-c(1:91),(i-2)]))))<eps
+      #      &max(abs((log(V[-c(1:91),(i-1)]))-(log(V[-c(1:91),(i-2)]))))<eps
+      #      &(abs((log(W[(i-1)]))-(log(W[(i-2)]))))<eps)
+      #   {
+      #     U[,Neq]<-U[,i-1]
+      #     PM.v[,Neq]<-PM.v[,i-1]
+      #     GG.v[,Neq]<-GG.v[,i-1]
+      #     V[,Neq]<-V[,i-1]
+      #     PM.u[,Neq]<-PM.u[,i-1]
+      #     GG.u[,Neq]<-GG.u[,i-1]
+      #     Y.u[,Neq]<-Y.u[,i-1]
+      #     Y.v[,Neq]<-Y.v[,i-1]
+      #     W[Neq]<-W[i-1]
+      #     return(list(U=U[,],GG.u=GG.u[,],PM.u=PM.u[,],V=V[,],GG.v=GG.v[,],PM.v=PM.v[,],Y.u=Y.u[,],Y.v=Y.v[,],W=W[], params=params))	
+      #   }
+      # }
+      # 
       
       #--------------------------------
       # Calculate Growth and Mortality
@@ -570,10 +572,11 @@ sizeparam<-function(equilibrium=F, dx=0.1,xmin=-12,xmax=6,xmin.consumer.u=-7,xmi
   param$V.init<-param$sinking.rate[1]*10^param$pp[1]*10^(param$r.plank[1]*param$x)  # set initial detritivore spectrum  
   param$W.init<-0.00001  # abritrary initial value for detritus
   
-  
+  param$equilibrium=equilibrium
   
   
   return(param)
+
 }#end sizeparam function
 
 
