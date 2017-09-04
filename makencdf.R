@@ -1,3 +1,4 @@
+source("./helpers.R")
 
 #----------------PUT FISH_MIP MODEL OUTPUTS INTO netcdf 4
 library(ncdf4)
@@ -18,16 +19,18 @@ library(ncdf4)
 # when you are done.
 
 mknetcdf<-function(varname = "tcb"
-                   ,description = "Total biomass consumers"
-                   ,units = "g C / m^2"
                    ,gcm = 'ipsl-cm5a-lr'
                    ,run = "rcp85"
                    ,gcmPath = '/rd/gem/private/GCM_INPUT/IPSL_CM5A_LR/'
-                   ,savetopath=""
+                   ,savetopath="/rd/gem/private/fishmip_outputs/aug_2017_2/netcdf2_trial/"
                    ,grids = 1:39567
-                   ,data_path = '/rd/gem/private/fishmip_outputs/aug_2017/'){
+                   ,data_path = '/rd/gem/private/fishmip_outputs/aug_2017_2/'){
   
+  #initialisations
   if (savetopath=="") savetopath <- data_path
+  description <- dbpm.variables$description[dbpm.variables$name==varname]
+  units <-  dbpm.variables$units[dbpm.variables$name==varname]
+  
   
   #get lon, lat and time from inputfile
   tme  =  "_monthly_200601_21001231.nc4"
@@ -37,7 +40,7 @@ mknetcdf<-function(varname = "tcb"
   lon <- ncvar_get(nc,'longitude')
   lat <- ncvar_get(nc,'latitude')
   t2 <- ncvar_get(nc,'time')
-  
+  nc_close(nc)
   rm(nc)
   
   #get additional time from historical file
@@ -49,7 +52,7 @@ mknetcdf<-function(varname = "tcb"
   
   #construct time from inputfile time and historical time
   t <- c(t1,t2+length(t1))
-  
+  nc_close(nc)
   rm(nc,t1,t2)
   
   # Define some straightforward dimensions

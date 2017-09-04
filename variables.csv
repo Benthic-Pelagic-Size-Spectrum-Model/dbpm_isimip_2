@@ -1,4 +1,4 @@
-"varname", "description", "units"
+"name", "description", "units"
 "tcb", "Total consumer biomass density", "g C / m^2"
 "tsb", "Total system biomass density", "g C / m^2"
 "b10cm", "Biomass density of pelagic predators > 10 cm", "g C / m^2"

@@ -102,3 +102,5 @@ start_of_history_weeks <- end_of_spinup_weeks + 1
 end_of_history_weeks <- end_of_spinup_weeks + 55*48
 start_of_projections_weeks <- end_of_history_weeks + 1
 end_of_projections_weeks <- 21645 #451*48 - 3
+
+dbpm.variables <- read.csv("variables.csv", header = TRUE, stringsAsFactors = FALSE, strip.white=TRUE)
