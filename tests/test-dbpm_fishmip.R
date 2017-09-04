@@ -18,3 +18,10 @@ test_that("model date boundaries are as expected",{
   expect_that(end_of_projections_weeks, equals(21645))  
   
 })
+
+
+test_that("commandline calls work as expected", {
+  setwd("..")
+  expect_equal(blah <- system("Rscript runmodel_calls.R -s 1 -i /rd/gem/private/fishmip_inputs/ -o ~/", ignore.stdout = TRUE, ignore.stderr = TRUE), 1)
+})
+
