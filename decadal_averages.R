@@ -1,8 +1,8 @@
 source("helpers.R")
 #decadal averages
 #using nco
-input_path <- "/rd/gem/private/fishmip_outputs/aug_2017_2/netcdf"
-output_path <- "/rd/gem/private/fishmip_outputs/aug_2017_2/netcdf/decadal"
+input_path <- "/rd/gem/private/fishmip_outputs/aug_2017_2/netcdf2"
+output_path <- "/rd/gem/private/fishmip_outputs/aug_2017_2/netcdf2/decadal"
 
 make_decadal_averages <- function(run, varname, input_path, output_path){
 
