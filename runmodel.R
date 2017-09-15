@@ -23,14 +23,12 @@ rungridsep <- function(igrid=1
   if (gcm =="reanalysis"){
     
     input_filename <- sprintf("%sgrid_%i_inputs_%s_%s.RData", input_files_location, igrid, gcm, run)
-    
     load(input_filename)
     
   } else {
     
-    input_filename <- sprintf("%sgrid_%i_inputs2_%s_%s.RData", input_files_location, igrid, gcm, run)
-    
-    load(input_filename)
+    input_filename <- sprintf("%sgrid_%i_inputs2_%s_%s.rds", input_files_location, igrid, gcm, run)
+    inputs <- readRDS(input_filename)
 
     #plot(inputs$ts$sst) 
     
@@ -158,15 +156,14 @@ rungridsep <- function(igrid=1
       agg[1,1:13] <- agg[,1:13] * min(agg$depth[],100)
       
       
-      output_filename <- sprintf("%sres_mts_agg_igrid_%i_%s_%s.RData", output_files_location, igrid, gcm, run)
-      save(agg, file=output_filename, compress = FALSE)
-      
+      output_filename <- sprintf("%sres_mts_agg_igrid_%i_%s_%s.rds", output_files_location, igrid, gcm, run)
+      saveRDS(agg, file=output_filename, compress = FALSE)
     }
     
     
     if (output!="aggregated") {
-      output_filename <- sprintf("%sres_wts_igrid_%i_%s_%s.RData",output_files_location, igrid, gcm, run)
-      save(result_set, file = output_filename, compress = FALSE)
+      output_filename <- sprintf("%sres_wts_igrid_%i_%s_%s.rds",output_files_location, igrid, gcm, run)
+      saveRDS(result_set, file = output_filename, compress = FALSE)
     }
     
   }
@@ -187,9 +184,8 @@ rungridsep <- function(igrid=1
     
     agg$depth <- rep(params$depth,each=length(agg[,1]))
     
-    output_filename <- sprintf("res_mts_agg_igrid_%i_%s_%s.RData", igrid, gcm, run)
-    
-    save(agg, file=paste(output_files_location, output_filename, sep=""), compress = FALSE)
+    output_filename <- sprintf("%sres_mts_agg_igrid_%i_%s_%s.rds", output_files_location, igrid, gcm, run)
+    saveRDS(agg, file=output_filename, compress = FALSE)
     
     rm(TotalUbiomass,Ubiomass10plus,Ubiomass270plus,TotalUcatch,Ucatch10plus,Ucatch270plus,TotalVbiomass,Vbiomass10plus,Vbiomass270plus,TotalVcatch,Vcatch10plus,Vcatch270plus, TotalW)
     

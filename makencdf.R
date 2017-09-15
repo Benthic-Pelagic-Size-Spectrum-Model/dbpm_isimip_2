@@ -79,18 +79,14 @@ mknetcdf<-function(varname = "tcb"
   
   for (igrid in grids) {
     
+    data_filename <- sprintf("%s/%s/res_mts_agg_igrid_%i_%s_%s.rds", data_path, run, igrid, gcm, run)
+    agg <- readRDS(data_filename)
+      
+    # load the inputs to get lat , lon positions
+    input_filename <- sprintf("/rd/gem/private/fishmip_inputs/rds/%s/grid_%i_inputs2_%s_%s.rds", run, igrid, gcm, run)
+    readRDS(input_filename)
     
-  # load(file = paste("~/fishmip_outputs/res_mts_agg_igrid_",igrid,"_",gcm,"_",run,".RData",sep = ""))
-    
-  # load(file = paste("/../../rd/gem/private/fishmip_outputs/res_mts_agg_igrid_",igrid,"_",gcm,"_",run,".RData",sep = ""))
-  data_filename <- sprintf("%s/%s/res_mts_agg_igrid_%i_%s_%s.RData", data_path, run, igrid, gcm, run)
-      load(data_filename)
-    
-  # load the inputs to get lat , lon positions
-  input_filename <- sprintf("/rd/gem/private/fishmip_inputs/grid_%i_inputs2_%s_%s.RData", igrid, gcm, run)
-    load(input_filename)
-    
-  # check indexing
+    # check indexing
     
     idx <- seq(from=1, to=(dim(inputs$ts)[1]),4)
     # 1950 onwards

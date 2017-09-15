@@ -283,7 +283,9 @@ getgridin<-function(igrid){
   
   inputs=list(depth=dep,ts=fwts)
   
-  save(inputs,file=paste("/../../rd/gem/private/fishmip_inputs/grid_",igrid,"_inputs2_",gcm,"_",run,".RData",sep=""))
+  thepath <- "/rd/gem/private/fishmip_inputs"
+  filename <- sprintf("%s/rds/%s/grid_%i_inputs2_%s_%s.rds", thepath, run, igrid, gcm, run)
+  saveRDS(inputs, file=filename, compress = FALSE)
   
   rm(inputs,fwts,wts,gridinputs1,gridinputs,spinup)
   
