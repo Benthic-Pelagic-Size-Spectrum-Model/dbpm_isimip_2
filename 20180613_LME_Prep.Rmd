@@ -1,0 +1,170 @@
+---
+title: "Prep for LME  Monthly Averages"
+author: "Just Berkhout"
+date: "13-06-2018"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message=FALSE)
+
+library(rgdal)
+library(RColorBrewer)
+
+```
+
+##Brief
+
+> to spatially average the monthly fishmip inputs (pp intercept slopes, temperature et al) into 
+Large marine ecosystems ?
+I think there are shapefiles here: (also Reg has some if not) http://www.lmehub.net
+
+
+## Large Marine Ecosystems
+There is online interactive mapping of Large Marine Ecosystems (LME) on http://www.lmehub.net, but I couldn't find shape files or other spatial data in accessible form. I also couldn't find LME data on http://www.marineregions.org; the links are referencing http://www.lme.noaa.gov/, but resulting in a _404 Not Found_. The NOAA _does_ have an LME section at https://www.st.nmfs.noaa.gov/ecosystems/lme/index. It mentions that NOAA developed the Large Marine Ecosystem (LME) concept in cooperation with the University of Rhode Island over 30 years ago, and that there are 64 LMEs defined globally.
+
+Because of the reference to the University of Rhode Island, I downloaded the LME shape file in zip archive from the Environmental Data Centre at the University of Rhode Island. Decsription here: http://lme.edc.uri.edu/index.php/digital-data/113-lme-polygon-boundaries and the archive itself here: http://lme.edc.uri.edu/images/Content/Downloads/DigitalData/LME66.zip. In this version of the LME data there are 66 (not 64) LME; presumably this reflects a more recent revision. 
+
+Here I plot the bare LME polygon data in 12 colours. 
+
+```{r plot LME shp, cache = TRUE}
+LMEs <- readOGR(dsn ="LMEs66/", layer = "LMEs66", verbose = FALSE)
+someColours = brewer.pal(11, "Spectral")
+plot(LMEs, col=someColours[LMEs$LME_NUMBER%%12], border="black", lwd=1)
+
+```
+
+## Inventory of input files
+
+The 'inputs files' used for the dbpm/Fishmip work are `.rds` files in `/rd/gem/private/fishmip_inputs/rds/`. They are organised in rcp scenarios, `rcp26`, `rcp45`, `rcp60`, `rcp85`. Each has 39570 files in them, corresponding with each ocean grid cell. The cells are ordinally numbered, repesent the surface of the earth in 1 degree grid cells, with all the land-based grid cells omitted.
+
+the directory structure is given here:
+
+```
+fishmip_inputs/
+  + misc
+    + Seas and Submerged Lands Act 1973
+      + Seas and Submerged Lands Act 1973.gdb
+  + rds
+    + rcp26
+    + rcp45
+    + rcp60
+    + rcp85
+```
+
+``` {r init example input filename}
+base_path <- "/rd/gem/private/"
+file_name <- "fishmip_inputs/rds/rcp26/grid_9996_inputs2_ipsl-cm5a-lr_rcp26.rds"
+```
+
+An example path of one file is
+
+> ``r file_name``
+
+Each input .rds-file contains two data frames, called `depth` and `ts` respectively. 
+
+The dataframe `depth` contains the metadata for the gridcell (`lon`, `lat`, `detph` and `gridnum`, where gridnum is the ordinal grid number that references the 360x180 earth grid as if the land grid cells had not been omitted). 
+
+```{r inspect depth dataframe}
+
+dat <- readRDS(sprintf("%s%s", base_path, file_name))
+
+str(dat$depth)
+```
+
+The dataframe `ts` contains 21,645 timesteps for the variables `sst`, `sbt`, `er`, `intercept` and `slope`. The size and baseline of the timesteps are unclear atm, but they presumably contain a spinup, historical and projected component. The variables potentially correspond to the variables asked in the brief: `sst` Sea Surface Temperature, `sbt` Sea Bottom Temperature, `intercept` and `slope`. It is unclear how `er` maps to `pp`.
+
+
+
+```{r inspect ts dataframe}
+str(dat$ts)
+
+```
+
+### Inventory of fishmip outputs
+
+If the `input files` in the brief refer to the __output files__ of the `dbpm` runs (and therefore to the __input files__ of the corresponding NetCDF files), then the inventory is different. The files are `.RData` files, are organised by rcp scenario, and several versions exist. The `aug_2017_2` run is the final one, that looks to have been translated into NetCDF, and therefore assumed the current production version. 
+
+```
+fishmip_outputs/
+  + 20170802_trial
+  + 20170802_trials2
+  + aug_2017
+    + netcdf
+    + rcp26
+    + rcp45
+    + rcp60
+    + rcp85
+  + aug_2017_2
+    + netcdf
+    + netcdf2
+      + decadal
+    + netcdf2_trial
+    + rcp26
+    + rcp45
+    + rcp60
+    + rcp85
+```
+
+``` {r init example output filename}
+base_path <- "/rd/gem/private/"
+file_name <- "fishmip_outputs/aug_2017_2/rcp45/res_mts_agg_igrid_27601_ipsl-cm5a-lr_rcp45.RData"
+```
+Here i'm inspecting the file 
+
+> ``r file_name``
+
+This file contains a single data frame, called `agg`, that __aggregates__ 16 variables (13 variables + `lon`, `lat` and `depth`) into 5418 months (?) for each grid cell. It is not clear how any of these variables would relate to the variables "`pp`, `intercept`, `slopes`, `temperature` et al..." in the brief.
+
+```{r inspect RData output file}
+
+load(sprintf("%s%s", base_path, file_name))
+str(agg)
+
+```
+
+
+## Method for Spatially Averaging
+
+The grid cells appear to be represented by centre point (eg: the cell represented by lat=23.5 and lon=192.5, represents the grid cell bounded by minimum bounding rectangle mbr(24.0, 192.0 23.0, 193.0) ).
+
+LME are exclusive (i.e. non overlapping contiguous polygonal areas)
+
+grid cells belong to 0 or 1 LME
+
+For each rcp scenario  
+For each file (representing a grid cell) falling into an LME   
+and only relevant timestep ranges selected (i.e no spinup)  
+each 4th timestep value will be taken (to represent the monthly value)  
+and aggregated into a data frame of schema:  
+
+| Scenario | LME ID | Grid Num | ts/Month | sst | sbt | slope | intercept | pp/er |  
+| ---------| ------ | -------- | -------- | --- | --- | ----- | --------- | ----- |
+
+the resulting data frame will then be summarised by `mean` grouping by `Scenario`, `LME ID` and `ts/Month` resulting in a Monthly whole-of-area mean (average) of each of the variables for each of the LME.
+
+
+```{r est df size, include=FALSE}
+
+m <- matrix(1,nrow=(451*12*66*4),ncol=9)
+m <- as.data.frame(m)
+m[,1:2] <- sapply(m[,1:2],as.factor)
+
+est_df_size <- gdata::humanReadable(object.size(m), standard = "SI", digits=0)
+
+
+```
+
+The output with three 'dimension' attributes (Scenario, LME ID and Timestep), and 5 variables, would consist of 1.4 Million rows (i.e 451 years of 12 months, across 66 LME and 4 Scenarios). This would be a dataframe of an estimated `r est_df_size`.
+
+
+
+It should be possible to visualise these values in choropleth maps (fore each value) based on the polygons provided (and displayed above). It should be possible to visualise animates frame-by-frame monthly choropleth for displaying changes over time. 
+
+## TO DO
+
+* are there multiple interpretations of "to spatially average the monthly fishmip inputs"
+* dev averaging + for spatial averaging per run? per LME?
+* visualisation for output
