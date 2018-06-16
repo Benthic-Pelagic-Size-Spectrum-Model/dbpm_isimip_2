@@ -15,11 +15,20 @@ library(RColorBrewer)
 
 ```
 
-##Brief
+## Brief
 
 > to spatially average the monthly fishmip inputs (pp intercept slopes, temperature et al) into 
 Large marine ecosystems ?
 I think there are shapefiles here: (also Reg has some if not) http://www.lmehub.net
+
+## Goals
+Averaging the fishmip inputs is the first step of three that will lead to integrating global fisheries catch input into the dbpm model. The steps are: 
+
+1. **Provide fishmip inputs at the LME scale for model comparison and dbpm existing grid cell outputs**
+1. To run and compare output of dbpm at the LME scale
+1. To add catches into the model initially at LME scale (later grid cell)
+
+The initial focus will be on LME. To complement the LME, FAO areas will then be used to cover the reamainder of global ocean area at similar scale.
 
 
 ## Large Marine Ecosystems
@@ -165,6 +174,14 @@ It should be possible to visualise these values in choropleth maps (fore each va
 
 ## TO DO
 
+* decide (and justify) LME66 vs LME64 (or accommodate both?)
+* obtain LME and FAO areas (from Reg?)
+* make mapping (ad find/develop language around ordinal grdcell numbering with or without the land omitted)
 * are there multiple interpretations of "to spatially average the monthly fishmip inputs"
 * dev averaging + for spatial averaging per run? per LME?
 * visualisation for output
+* in step 2 we'll run the model at LME scale; THe model can be run in aggregation mode (outputs similar to described above) or in detailed (non-aggregated) mode. Inspect what outputs that will generate, and what that is useful for. 
+
+* one verification step along the way will be to view how averaged-grid-based-dbpm-outputs per LME compare with outputs obtained from LME scale (averaged) inputs. 
+
+* the baseline method for including cells in an LME is if the cell __touches__ the LME, it's is include. 
