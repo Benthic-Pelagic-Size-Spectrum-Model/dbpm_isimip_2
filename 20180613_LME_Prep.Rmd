@@ -172,6 +172,17 @@ The output with three 'dimension' attributes (Scenario, LME ID and Timestep), an
 
 It should be possible to visualise these values in choropleth maps (fore each value) based on the polygons provided (and displayed above). It should be possible to visualise animates frame-by-frame monthly choropleth for displaying changes over time. 
 
+## GROM - GRid cell Ordinal Mapping
+
+* make mapping (ad find/develop language around ordinal grdcell numbering with or without the land omitted)
+
+TO enable easier mapping between spatial data and the ocean only ordinal cell references by which the input files are referenced, I've made a mapping of gridnum to gridid. GridNum is the ordinal number of a cell in 1°x1° grid starting from Latitude -89.5 and Longitude 0.5, running through to 89.5, 359.5, with all land and ocean included. Gridnum ranges from 1 to 64800. GridId is the contiguous ordinal numbering of all 1°x1° grid cells that cover the ocean. GridID ranges from 1 to 39567.
+
+Ive made a Grid cell Ordinal mapping (or GROM) that maps GridId (as found in the filenames of DBPM inputs) to GridNum as is found in the 1-row-dataframe `depth` in each inputfile. To enable spatial analysis and potentially depth-related analysis I have included the `lat` and `lon` and `depth` attributes in the mapping. The mapping is available as a file `grom.rds` in this repository, as is the code by which it was generated (`gridcell_ordinal_mapping.R`). 
+
+
+
+
 ## TO DO
 
 * decide (and justify) LME66 vs LME64 (or accommodate both?)
