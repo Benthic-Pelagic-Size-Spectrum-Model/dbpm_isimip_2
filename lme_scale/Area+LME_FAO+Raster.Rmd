@@ -1,0 +1,89 @@
+---
+title: "LME and FAO zones"
+author: "Just Berkhout"
+date: "10 July 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(raster)
+library(dplyr)
+```
+
+## In short
+
+Use the 0.5 degree grid with LME and FAO zones as used by Reg to aggregate the gridded input2 into LME scale inputs
+
+Getting + inspecting the areas as provided by Reg in Areas.csv
+
+```{r get areas, cache=TRUE}
+areas <- read.csv("/rd/gem/private/fishmip_inputs/misc/LMEFAO_Areas/Areas.csv")
+
+```
+
+```{r inspect areas, echo=FALSE}
+
+knitr::kable(head(areas))
+
+```
+
+
+Using attributes `LonDeg` and `LatDeg` to produce a grid with variable value `AreaCode`
+
+```{r areas with ___Deg, cache=TRUE}
+
+x <- raster(xmn=-180, xmx=180, ymn=-90, ymx=90, res=0.5, crs="+proj=longlat +datum=WGS84")
+AreaGrid <- rasterize(areas[, c('LonDeg', 'LatDeg')], x, areas[, 'AreaCode'])
+plot(AreaGrid, axes=FALSE, legend=FALSE)
+
+```
+
+
+Using `raster`, `rasterize` and the attibutes `LonCentre` and `LatCentre` to produce a grid with
+variable `AreaCode` at input data resolution of 0.5°
+
+``` {r area with ___Centre, cache=TRUE}
+x2 <- raster(xmn=-180, xmx=180, ymn=-90, ymx=90, res=0.5, crs="+proj=longlat +datum=WGS84")
+AreaGrid2 <- rasterize(areas[, c('LonCentre', 'LatCentre')], x2, areas[, 'AreaCode'])
+plot(AreaGrid2, axes=FALSE, legend=TRUE)
+
+```
+
+Using `raster`, `rasterize` and the attibutes `LonCentre` and `LatCentre` to produce a grid with
+variable `AreaCode` at resolution of 1°
+
+``` {r area with ___Centre at resolution 1, cache=TRUE}
+x3 <- raster(xmn=-180, xmx=180, ymn=-90, ymx=90, res=1, crs="+proj=longlat +datum=WGS84")
+AreaGrid3 <- rasterize(areas[, c('LonCentre', 'LatCentre')], x3, areas[, 'AreaCode'])
+dataType(AreaGrid3) <- "INT2S"
+plot(AreaGrid3, axes=FALSE, legend=FALSE)
+
+```
+
+The datatype for this raster is `r dataType(AreaGrid3)`
+
+```{r compare 1 degree rasters, cache=TRUE}
+
+areas2 <- areas %>%
+  filter(LonCentre - floor(LonCentre) == 0.75,
+         LatCentre - floor(LatCentre) == 0.75) %>%
+  mutate(LonCentre = LonCentre - 0.25,
+         LatCentre = LatCentre - 0.25)
+
+x4 <- raster(xmn=-180, xmx=180, ymn=-90, ymx=90, res=1, crs="+proj=longlat +datum=WGS84")
+AreaGrid4 <- rasterize(areas2[, c('LonCentre', 'LatCentre')], x4, areas2[, 'AreaCode'])
+dataType(AreaGrid4) <- "INT2S"
+plot(AreaGrid4, axes=FALSE, legend=FALSE)
+
+
+
+```
+
+The datatype for this raster is `r dataType(AreaGrid4)`
+
+```{r compare the two 1 degree rasters}
+differentCells <- AreaGrid4%%AreaGrid3 != 0
+plot(differentCells, axes=FALSE, legend=FALSE)
+```
+
