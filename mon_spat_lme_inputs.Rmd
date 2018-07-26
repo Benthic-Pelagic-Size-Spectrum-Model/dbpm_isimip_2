@@ -33,7 +33,7 @@ I created a 1° rasterised map of the Large Marine Ecosystems (LME) shape file w
 
 
 ```{r LME, echo=FALSE}
-LMEs <- readOGR(dsn ="LMEs66/", layer = "LMEs66", verbose = FALSE)
+LMEs <- readOGR(dsn ="/rd/gem/private/fishmip_inputs/misc/LMEs66/", layer = "LMEs66", verbose = FALSE)
 r <- raster(ncol=360, nrow=180)
 extent(r) <- extent(LMEs)
 rLMEs <- rasterize(LMEs, r, 'LME_NUMBER')

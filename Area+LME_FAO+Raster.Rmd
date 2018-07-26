@@ -18,7 +18,7 @@ Use the 0.5 degree grid with LME and FAO zones as used by Reg to aggregate the g
 Getting + inspecting the areas as provided by Reg in Areas.csv
 
 ```{r get areas, cache=TRUE}
-areas <- read.csv("data/Areas.csv")
+areas <- read.csv("/rd/gem/private/fishmip_inputs/misc/LMEFAO_Areas/Areas.csv")
 
 ```
 
