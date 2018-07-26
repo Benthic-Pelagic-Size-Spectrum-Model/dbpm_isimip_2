@@ -1,0 +1,240 @@
+---
+title: "Compare equivalence of dbpm inputs"
+author: "Just Berkhout"
+date: "28/6/2018"
+output:
+  pdf_document: default
+  html_document: default
+---
+    
+```{r setup, include=FALSE}
+  knitr::opts_chunk$set(echo = TRUE)
+  library(dplyr)
+  library(tidyr)
+
+```
+
+## Assess whether files are compatible. 
+
+This is to assess whether first run of LME scale inputs was done on outdated inputs.
+A number of input files of slightly different form are available. THe one that were used for the 
+LME scale input files production were named: 
+`ppinput_ipsl-cm5a-lr_historical.RData`, `ppinput_ipsl-cm5a-lr_rcp26.RData`,
+`ppinput_ipsl-cm5a-lr_rcp45.RData`,`ppinput_ipsl-cm5a-lr_rcp60.RData`,
+`ppinput_ipsl-cm5a-lr_rcp85.RData`in the directory `/rd/gem/private/fishmip_inputs/`. They contain a monthly timestepped for all 39567 ocean grid cells. The variables (inc dimensions) in these files are `lon`, `lat`, `t`, `sphy`, `lphy`, `sst`, `sbt`, `er`, `intercept` and `slope`
+
+The directory `/rd/gem/private/fishmip_inputs/rds/` contains four subdirectories (`rcp26`, `rcp45`, `rcp60` and `rcp85`) each with 39567 files, representing the ocean grid cells. Each File contains an `R` `list` of two `data.frame` elements. `depth` contains `lon`, `lat`, `depth` and `gridnum`, while `ts` contains 21645 timesteps of 5 variables (`sst`, `sbt`, `er`, `intercept` and `slope`). 21645 equates to 451 years of 48 _weeks_, with 3 _weeks_ omitted. Unlcear is whether the first or the last three _weeks_ are omitted. The 451 years are made up of 301 years of spinup time, 55 years of historical input data and 95 years of projections.
+
+The directory `/rd/gem/private/archived_away/inputs` contains `.RData` files. When loaded an`R` `list` of two `data.frame` elements, names `inputs` appears. It is made up similar to the `.rds` files described above, but its `ts` `data.frame` contains 4557 rows, and an additional variable `t`. `t` is stepped from 0 in 0.25 increments, suggesting that they are _weeks_ and whole numbers are --again-- months. 4557 is 95 years of four _weeks_ with three weeks omitted. This suggests that the data is input data of the projected years 2006-2100. Indeed additional files are found in this set that reflect historical data.
+
+Files in this directory are named: `grid_?????_inputs_ipsl-cm5a-lr_rcpxx.RData` and `grid_?????_inputs_ipsl-cm5a-lr_historical.RData`, where `?????` stands for the ocean grid cell number and `rcpxx` for the scenario.
+
+
+The directory `/rd/gem/private/archived_away/inputs2` contains `.RData` files. THese are the `.RData` versions of the same files described under the `.rds` files above. These were the source materials for the production of the `.rds` files, which were rewritten for to enable code improvements and model run performance improvements
+
+Files in this directory are named according to the pattern `grid_?????_inputs2_ipsl-cm5a-lr_rcpxx.RData`  where `?????` stands for the ocean grid cell number and `rcpxx` for the scenario.
+
+
+
+```{r init params, echo=FALSE}
+runs <- c("rcp26", "rcp45", "rcp60", "rcp85")
+run <- sample(runs, 1)
+gridid <- as.character(sample(1:39567, 1))
+base_path <- "/rd/gem/private"
+
+df <- data.frame(a=character(), 
+                 b=character(), 
+                 c=character(), 
+                 d=logical(), 
+                 stringsAsFactors=FALSE)
+```
+
+## Sample equivalence test
+
+`One` represents an aggregate input file, here: `` `r sprintf("ppinput_ipsl-cm5a-lr_%s.RData", run)`  ``  
+`Two` represents a single grid cell `.rds` input file  
+`Three` represents a single grid cell archived `.RData` inputs file (with history separate)
+`Four` represents a single grid cell archived `.RData` inputs2 file (with history embedded)  
+
+Files of type `Two` (`.rds`-files) were used in the latest `dbpm` model output.
+
+Here we are sampling 1 gridcell (`r gridid`) of one scenario (`r run`).
+
+
+```{r get data, echo=FALSE}
+
+#load the aggregated file
+file_one <- sprintf("%s/fishmip_inputs/ppinput_ipsl-cm5a-lr_%s.RData", base_path, run)
+load(file_one)
+pp_one <-  pp
+rm(pp)
+
+
+#load the rds files
+file_two <- sprintf("%s/fishmip_inputs/rds/%s/grid_%s_inputs2_ipsl-cm5a-lr_%s.rds", base_path, run, gridid, run)
+inputs_two <- readRDS(file_two)
+
+
+#load the archived RData inputs file
+file_three <- sprintf("%s/archived_away/inputs/grid_%s_inputs_ipsl-cm5a-lr_%s.RData", base_path, gridid, run)
+load(file_three)
+inputs_three <-  inputs
+rm(inputs)
+
+
+#load the archived RData inputs2 file
+file_four <- sprintf("%s/archived_away/inputs2/grid_%s_inputs2_ipsl-cm5a-lr_%s.RData", base_path, gridid, run)
+load(file_four)
+inputs_four <-  inputs
+rm(inputs)
+```
+
+`One` is `` `r file_one` ``.   
+`Two` is `` `r file_two` ``.   
+`Three` is `` `r file_three` ``.   
+`Four` is `` `r file_four` ``.   
+
+```{r compare aggr to rds, echo=FALSE}
+one_equiv <- pp_one %>%
+  filter(
+    lon == inputs_two$depth$lon,
+    lat == inputs_two$depth$lat) %>%
+  dplyr::select(-lon, -lat)
+
+
+month_end_indices <- rev(as.integer(seq.int(from=nrow(inputs_two$ts), length.out=nrow(one_equiv), by=-4)))
+two_equiv <- inputs_two$ts[month_end_indices,]
+rm(month_end_indices)
+
+df <- df %>%
+  bind_rows(
+    c(a = "One", b = "Two", c = "sst", d = identical(one_equiv$sst, two_equiv$sst)),
+    c(a = "One", b = "Two", c = "sbt", d = identical(one_equiv$sbt, two_equiv$sbt)),
+    c(a = "One", b = "Two", c = "er", d = identical(one_equiv$er, two_equiv$er)),
+    c(a = "One", b = "Two", c = "intercept", d = identical(one_equiv$intercept, two_equiv$intercept)),
+    c(a = "One", b = "Two", c = "slope", d = identical(one_equiv$slope, two_equiv$slope))
+  )
+
+```
+
+```{r compare aggr to inputs, echo=FALSE}
+#reuse one_equiv
+
+month_end_indices <- rev(as.integer(seq.int(from=nrow(inputs_three$ts), length.out=nrow(one_equiv), by=-4)))
+three_equiv <- inputs_three$ts[month_end_indices,]
+rm(month_end_indices)
+
+df <- df %>%
+  bind_rows(
+    c(a = "One", b = "Three", c = "sst", d = identical(one_equiv$sst, three_equiv$sst)),
+    c(a = "One", b = "Three", c = "sbt", d = identical(one_equiv$sbt, three_equiv$sbt)),
+    c(a = "One", b = "Three", c = "er", d = identical(one_equiv$er, three_equiv$er)),
+    c(a = "One", b = "Three", c = "intercept", d = identical(one_equiv$intercept, three_equiv$intercept)),
+    c(a = "One", b = "Three", c = "slope", d = identical(one_equiv$slope, three_equiv$slope))
+  )
+
+```
+
+```{r compare aggr to inputs2, echo=FALSE}
+#reuse one_equiv
+
+month_end_indices <- rev(as.integer(seq.int(from=nrow(inputs_four$ts), length.out=nrow(one_equiv), by=-4)))
+four_equiv <- inputs_four$ts[month_end_indices,]
+rm(month_end_indices)
+
+df <- df %>%
+  bind_rows(
+    c(a = "One", b = "Four", c = "sst", d = identical(one_equiv$sst, four_equiv$sst)),
+    c(a = "One", b = "Four", c = "sbt", d = identical(one_equiv$sbt, four_equiv$sbt)),
+    c(a = "One", b = "Four", c = "er", d = identical(one_equiv$er, four_equiv$er)),
+    c(a = "One", b = "Four", c = "intercept", d = identical(one_equiv$intercept, four_equiv$intercept)),
+    c(a = "One", b = "Four", c = "slope", d = identical(one_equiv$slope, four_equiv$slope))
+  )
+
+```
+
+```{r compare rds to inputs, echo=FALSE}
+#reuse two_equiv
+#reuse three_equiv
+df <- df %>%
+  bind_rows(
+    c(a = "Two", b = "Three", c = "sst", d = identical(two_equiv$sst, three_equiv$sst)),
+    c(a = "Two", b = "Three", c = "sbt", d = identical(two_equiv$sbt, three_equiv$sbt)),
+    c(a = "Two", b = "Three", c = "er", d = identical(two_equiv$er, three_equiv$er)),
+    c(a = "Two", b = "Three", c = "intercept", d = identical(two_equiv$intercept, three_equiv$intercept)),
+    c(a = "Two", b = "Three", c = "slope", d = identical(two_equiv$slope, three_equiv$slope))
+  )
+
+```
+```{r compare rds to inputs2, echo=FALSE}
+#reuse two_equiv
+#reuse four_equiv
+df <- df %>%
+  bind_rows(
+    c(a = "Two", b = "Four", c = "sst", d = identical(two_equiv$sst, four_equiv$sst)),
+    c(a = "Two", b = "Four", c = "sbt", d = identical(two_equiv$sbt, four_equiv$sbt)),
+    c(a = "Two", b = "Four", c = "er", d = identical(two_equiv$er, four_equiv$er)),
+    c(a = "Two", b = "Four", c = "intercept", d = identical(two_equiv$intercept, four_equiv$intercept)),
+    c(a = "Two", b = "Four", c = "slope", d = identical(two_equiv$slope, four_equiv$slope))
+  )
+
+```
+```{r compare inputs to inputs2, echo=FALSE}
+#reuse three_equiv
+#reuse four_equiv
+df <- df %>%
+  bind_rows(
+    c(a = "Three", b = "Four", c = "sst", d = identical(three_equiv$sst, four_equiv$sst)),
+    c(a = "Three", b = "Four", c = "sbt", d = identical(three_equiv$sbt, four_equiv$sbt)),
+    c(a = "Three", b = "Four", c = "er", d = identical(three_equiv$er, four_equiv$er)),
+    c(a = "Three", b = "Four", c = "intercept", d = identical(three_equiv$intercept, four_equiv$intercept)),
+    c(a = "Three", b = "Four", c = "slope", d = identical(three_equiv$slope, four_equiv$slope))
+  )
+
+```
+
+```{r viz prep, echo=FALSE}
+
+df <- df %>%
+  mutate(
+    a = as.factor(a),
+    b = as.factor(b),
+    c = as.factor(c),
+    d = as.logical(d)
+  ) %>%
+  rename(
+    Object1 = a,
+    Object2 = b,
+    Attribute = c,
+    Identical = d
+  )
+
+```
+
+```{r viz, echo=FALSE}
+
+library(ggplot2)
+
+dat <- df %>% filter(Attribute=="sst")
+df$Object1 <- factor(df$Object1,levels(df$Object1)[c(1,3,2)])
+df$Object2 <- factor(df$Object2,levels(df$Object2)[c(3,2,1)])
+
+
+
+ggplot(df) +
+  geom_tile(aes(x=Object1, y=Object2, fill=Identical), color = "white") +
+  facet_grid(~ Attribute) +
+  theme(
+    panel.background = element_blank(),
+    axis.ticks = element_blank()
+  )
+
+```
+
+## Discussion
+
+The diagram above shows that for the lat-lon (grid cell) chosen, with the timesteps aligned between all four input data sets, the attributes `slope` and `intercept` are consistently different between dataset `One` (the large single-file dataframe with monthly timestaps) on the one hand, and the single grid-cell based input variations `Two`, `Three` and `Four` on the other.  `Two`, `Three` and `Four` Consistently agree with eachother.
+
+The dataset `One` contains additional variables `sphy` and `lphy`. Both dataset `One` and `Three` have timestep dimension `t` explicitly included, be it with different encodings.
+
+LME Scale inputs of equivalence to the inputs used for the latest `dbpm` run cannot be produced from dataset one. 
