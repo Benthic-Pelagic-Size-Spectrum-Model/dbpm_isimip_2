@@ -39,7 +39,7 @@ Because of the reference to the University of Rhode Island, I downloaded the LME
 Here I plot the bare LME polygon data in 12 colours. 
 
 ```{r plot LME shp, cache = TRUE}
-LMEs <- readOGR(dsn ="LMEs66/", layer = "LMEs66", verbose = FALSE)
+LMEs <- readOGR(dsn ="/rd/gem/private/fishmip_inputs/misc/LMEs66/", layer = "LMEs66", verbose = FALSE)
 someColours = brewer.pal(11, "Spectral")
 plot(LMEs, col=someColours[LMEs$LME_NUMBER%%12], border="black", lwd=1)
 

@@ -3,7 +3,7 @@
 
 get_lme_fao_grid <- function(){
   #read LME _FAO Areas
-  lme_fao <- read.csv("data/Areas.csv")
+  lme_fao <- read.csv("/rd/gem/private/fishmip_inputs/misc/LMEFAO_Areas/Areas.csv")
   
   #rescale to 1°
   
