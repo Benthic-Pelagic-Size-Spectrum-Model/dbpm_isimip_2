@@ -1,0 +1,36 @@
+---
+title: "Making LME-scale (LME/FAO) DBPM inputs"
+author: "Just Berkhout"
+date: "25 July 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(rgdal)
+library(RColorBrewer)
+```
+
+## R Markdown
+
+* inputs2 (1°, 39 cells, 21645 timesteps)
+
+* grom Grid Ordinal Mapping
+* Areas, LME and FAO
+* grom LME/FAO
+
+```{r plot LME shp, cache = TRUE}
+LMEs <- readOGR(dsn ="/rd/gem/private/fishmip_inputs/misc/LMEs66/", layer = "LMEs66", verbose = FALSE)
+someColours = brewer.pal(11, "Spectral")
+plot(LMEs, col=someColours[LMEs$LME_NUMBER%%12], border="black", lwd=1)
+
+```
+
+
+```{r plot FAO_AREAS shp, cache = TRUE}
+FAOs <- readOGR(dsn ="/rd/gem/private/fishmip_inputs/misc/FAO_AREAS/", layer = "FAO_AREAS", verbose = FALSE)
+someColours = brewer.pal(11, "Spectral")
+FAOs@data$F_AREA_NUM <- as.numeric(FAOs@data$F_AREA)
+plot(FAOs, col=someColours[FAOs$F_AREA_NUM%%12], border=someColours[FAOs$F_AREA_NUM%%12], lwd=1)
+
+```
