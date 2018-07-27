@@ -1,13 +1,42 @@
 source("size-based-models/dynamic_sizebased_model_functions.R", chdir = TRUE)
 source("helpers.R")
 
+getinputs <- function(
+  scale = "degree"
+  ,id = 1
+  ,gcm="ipsl-cm5a-lr"
+  ,run="rcp45"
+  ,input_files_location = "/rd/gem/private/fishmip_inputs/"
+) {
+  
+  if(scale=="degree" & gcm=="reanalysis") {
+    #TODO make inputs available again (from archived_away), convert to rds?
+    #organise in runs (26,45,60,85,historical)
+    input_filename <- sprintf("%sgrid_%i_inputs_%s_%s.RData", input_files_location, igrid, gcm, run)
+    load(input_filename)
+    
+    return(inputs)
+    
+  }
+  
+  if(scale=="degree" & gcm=="ipsl-cm5a-lr") {
+    input_filename <- sprintf("%sgrid_%i_inputs2_%s_%s.rds", input_files_location, id, gcm, run)
+    inputs <- readRDS(input_filename)  
+    return(inputs)
+  }
+  
+  stop ("No inputs found for given options")
+}
 
-rungridsep <- function(igrid=1
-                       ,gcm="ipsl-cm5a-lr"
-                       ,run="rcp45"
-                       ,output="aggregated"
-                       ,input_files_location = "/rd/gem/private/fishmip_inputs/"
-                       ,output_files_location = "/rd/gem/private/fishmip_outputs/") {
+rungridsep <- function(
+  igrid=1
+  ,gcm="ipsl-cm5a-lr"
+  ,run="rcp45"
+  ,output="aggregated"
+  ,input_files_location = "/rd/gem/private/fishmip_inputs/"
+  ,output_files_location = "/rd/gem/private/fishmip_outputs/"
+  ,scale = "degree"
+) {
   
   # we need to run the model with time-varying inputs   
   # the largest dt of the model is a monthly time step (Q-F was daily...which may still be needed) 
@@ -20,16 +49,9 @@ rungridsep <- function(igrid=1
   # ptm=proc.time()
   # options(warn=-1)
   
-  if (gcm =="reanalysis"){
-    
-    input_filename <- sprintf("%sgrid_%i_inputs_%s_%s.RData", input_files_location, igrid, gcm, run)
-    load(input_filename)
-    
-  } else {
-    
-    input_filename <- sprintf("%sgrid_%i_inputs2_%s_%s.rds", input_files_location, igrid, gcm, run)
-    inputs <- readRDS(input_filename)
-
+  inputs <- getinputs(scale, igrid, gcm, run, input_files_location)
+  
+  if (gcm !="reanalysis"){    
     #plot(inputs$ts$sst) 
     
     #historical_means <- colMeans(inputs$ts[(301*48):(300*48+55*48),])
