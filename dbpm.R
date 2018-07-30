@@ -7,6 +7,7 @@ rm(list=ls())
 #set defaults 
 startId <- 1
 endId <- 1
+ids <- ""
 run <- "rcp26"
 maxCores <- 1
 VERSION <- "0.02 (26-Jul-2018)"
@@ -20,7 +21,7 @@ GetoptLong::GetoptLong(
   "startId=i", "ID to start processing, optional, default (1)",
   "endId=i", "ID to end processing, optional, default (1). Must be >= startId",
   "ids=s", "CSV string of IDs to process. If this argument is given, startId and endID are ignored.",
-  "maxCores=i", "Maximum of cores to be used",
+  "maxCores=i", "Maximum of CPU cores to be used, optional, default (1)",
   "run=s", "Emissions scenario (rcp26, rcp45, rcp60, rcp85), optional, default (rcp26)",
   "inputPath=s", "Path where well-known input files are available, mandatory",
   "outputPath=s", "Path where output files can and will be written, mandatory",

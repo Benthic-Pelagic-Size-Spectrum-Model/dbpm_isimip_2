@@ -10,17 +10,20 @@ getinputs <- function(
 ) {
   
   if(scale=="degree" & gcm=="reanalysis") {
-    #TODO make inputs available again (from archived_away), convert to rds?
-    #organise in runs (26,45,60,85,historical)
-    input_filename <- sprintf("%sgrid_%i_inputs_%s_%s.RData", input_files_location, igrid, gcm, run)
-    load(input_filename)
     
+    input_filename <- sprintf("%sreanalysis/%s/%sgrid_%i_inputs_%s_%s.RData", input_files_location, run, igrid, gcm, run)
+    if(!file.exists(input_filename)) stop (sprintf("file with name '%s' does not exist", input_filename))
+    
+    
+    inputs <- readRDS(input_filename)
     return(inputs)
-    
   }
   
   if(scale=="degree" & gcm=="ipsl-cm5a-lr") {
     input_filename <- sprintf("%sgrid_%i_inputs2_%s_%s.rds", input_files_location, id, gcm, run)
+    
+    if(!file.exists(input_filename)) stop (sprintf("file with name '%s' does not exist", input_filename))
+    
     inputs <- readRDS(input_filename)  
     return(inputs)
   }
