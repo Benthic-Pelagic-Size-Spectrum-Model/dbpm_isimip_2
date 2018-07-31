@@ -65,19 +65,19 @@ source('helpers.R')
 # if ids is not given, then 
 # use this ids logic. This is dependent on scale. code should likely move into 
 # validation/initialisation above
-cells <- seq(startId, endId, by = 1)
-cells <- cells[!cells %in% grid_ids_found(outputPath)]
+ids <- seq(startId, endId, by = 1)
+ids <- ids[!ids %in% grid_ids_found(outputPath)]
 
 # if the length of ids is still 0 after this, then stop
-if (length(cells) > 0) {
+if (length(ids) > 0) {
   
-  numCores <- ifelse(length(cells) > maxCores, maxCores, length(cells))
+  numCores <- ifelse(length(ids) > maxCores, maxCores, length(ids))
   
   the_cluster <- parallel::makeForkCluster(getOption("cl.cores", numCores))
   
   if(!dryRun) {
     discard_output <- parallel::clusterApplyLB(the_cluster
-                                               ,x=cells
+                                               ,x=ids
                                                ,fun=rungridsep
                                                ,gcm=gcm
                                                ,run=run
