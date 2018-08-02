@@ -1,34 +1,88 @@
+require(dplyr)
+require(tidyr)
+library(magrittr)
 source("size-based-models/dynamic_sizebased_model_functions.R", chdir = TRUE)
 source("helpers.R")
+
+getOutputFilename <- function(hasRun, scale, id, gcm, run, output, output_files_location) {
+  
+  scale <- ifelse (scale=="degree", "igrid", scale)
+  file_path <- file.path(output_files_location, scale, run)
+  file_path <- gsub("/+", "/", file_path)
+  
+  if(hasRun & output=="aggregated") {
+    outputfile <- sprintf("%s/res_mts_agg_%s_%i_%s_%s.rds", file_path, scale, id, gcm, run)
+    
+  } else if(hasRun & output!="aggregated"){
+    outputfile <- sprintf("%s/res_wts_%s_%i_%s_%s.rds", file_path, scale, id, gcm, run)
+    
+  } else if (!hasRun){
+    outputfile <- sprintf("%s/res_mts_agg_%s_%i_%s_%s.rds", file_path, scale, id, gcm, run)
+    
+  } else {
+    stop("No valid output file option found")
+  }
+  
+  #ensure file_path exists
+  if (!dir.exists(file_path)) dir.create(file_path, recursive = TRUE)
+
+  return(outputfile)
+}
 
 getinputs <- function(
   scale = "degree"
   ,id = 1
   ,gcm="ipsl-cm5a-lr"
   ,run="rcp45"
-  ,input_files_location = "/rd/gem/private/fishmip_inputs/"
-) {
+  ,input_files_location = "/rd/gem/private/fishmip_inputs/") {
   
   if(scale=="degree" & gcm=="reanalysis") {
     
-    input_filename <- sprintf("%sreanalysis/%s/%sgrid_%i_inputs_%s_%s.RData", input_files_location, run, igrid, gcm, run)
+    input_filename <- sprintf("%sreanalysis/%s/%sgrid_%i_inputs_%s_%s.RData", input_files_location, run, id, gcm, run)
     if(!file.exists(input_filename)) stop (sprintf("file with name '%s' does not exist", input_filename))
-    
-    
+
     inputs <- readRDS(input_filename)
-    return(inputs)
-  }
-  
-  if(scale=="degree" & gcm=="ipsl-cm5a-lr") {
-    input_filename <- sprintf("%sgrid_%i_inputs2_%s_%s.rds", input_files_location, id, gcm, run)
     
+  } else if(scale=="degree" & gcm=="ipsl-cm5a-lr") {
+    
+    input_filename <- sprintf("%sgrid_%i_inputs2_%s_%s.rds", input_files_location, id, gcm, run)
     if(!file.exists(input_filename)) stop (sprintf("file with name '%s' does not exist", input_filename))
     
     inputs <- readRDS(input_filename)  
+
+  } else if (scale=="lmefao" & gcm=="ipsl-cm5a-lr") {
+    input_filename <- sprintf("%s/%s/%s_inputs2_%s_%s.rds", input_files_location, scale, scale, gcm, run)
+    
+    # input_filename <- "/rd/gem/private/fishmip_inputs/lmefao/lmefao_inputs2_ipsl-cm5a-lr_rcp26.rds"
+    # id = 34
+    ts <- readRDS(input_filename)  %>%
+      filter(lme_fao_code==id) %>%
+      arrange(ts) %>%
+      select(sst, sbt, er, intercept, slope) %>%
+      as.data.frame()
+    
+    grom_file <- "/rd/gem/private/fishmip_inputs/misc/groms/grom_lme_fao.rds"
+    
+    if (!file.exists(grom_file)) stop("grom file not found")
+    
+    depth <- readRDS(grom_file) %>%
+      filter(lme_fao_code==id) %>%
+      summarise(
+        lon = mean(lon),
+        lat = mean(lat),
+        depth = mean(depth),
+        gridnum = min(gridnum)
+      )
+    
+    inputs <- list(depth = depth, ts = ts)
+    
     return(inputs)
+    
+  } else {
+    stop ("No inputs found for given options")
   }
   
-  stop ("No inputs found for given options")
+  return(inputs)  
 }
 
 rungridsep <- function(
@@ -181,13 +235,15 @@ rungridsep <- function(
       agg[1,1:13] <- agg[,1:13] * min(agg$depth[],100)
       
       
-      output_filename <- sprintf("%sres_mts_agg_igrid_%i_%s_%s.rds", output_files_location, igrid, gcm, run)
+#     output_filename <- sprintf("%sres_mts_agg_igrid_%i_%s_%s.rds", output_files_location, igrid, gcm, run)
+      output_filename <- getOutputFilename (hasRun = TRUE, scale, igrid, gcm, run, output, output_files_location)
       saveRDS(agg, file=output_filename, compress = FALSE)
     }
     
     
     if (output!="aggregated") {
-      output_filename <- sprintf("%sres_wts_igrid_%i_%s_%s.rds",output_files_location, igrid, gcm, run)
+      #output_filename <- sprintf("%sres_wts_igrid_%i_%s_%s.rds",output_files_location, igrid, gcm, run)
+      output_filename <- getOutputFilename (hasRun = TRUE, scale, igrid, gcm, run, output, output_files_location)
       saveRDS(result_set, file = output_filename, compress = FALSE)
     }
     
@@ -209,7 +265,8 @@ rungridsep <- function(
     
     agg$depth <- rep(params$depth,each=length(agg[,1]))
     
-    output_filename <- sprintf("%sres_mts_agg_igrid_%i_%s_%s.rds", output_files_location, igrid, gcm, run)
+    #output_filename <- sprintf("%sres_mts_agg_igrid_%i_%s_%s.rds", output_files_location, igrid, gcm, run)
+    output_filename <- getOutputFilename (hasRun = FALSE, scale, igrid, gcm, run, output, output_files_location)
     saveRDS(agg, file=output_filename, compress = FALSE)
     
     rm(TotalUbiomass,Ubiomass10plus,Ubiomass270plus,TotalUcatch,Ucatch10plus,Ucatch270plus,TotalVbiomass,Vbiomass10plus,Vbiomass270plus,TotalVcatch,Vcatch10plus,Vcatch270plus, TotalW)

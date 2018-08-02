@@ -1,6 +1,10 @@
 #!/usr/bin/env Rscript
 #options(warn=-1) 
 
+library(tidyr, warn.conflicts = FALSE)
+library(magrittr, warn.conflicts = FALSE)
+library(dplyr, warn.conflicts = FALSE)
+
 #if (!require("GetoptLong")) install.packages("GetoptLong", repos ="https://cran.csiro.au/")
 rm(list=ls())
 
@@ -10,17 +14,17 @@ endId <- 1
 ids <- ""
 run <- "rcp26"
 maxCores <- 1
-VERSION <- "0.02 (26-Jul-2018)"
+VERSION <- "0.02 (03-Aug-2018)"
 dryRun <- FALSE
 scale <- "degree" #degree, lmefao, eez
-gcm="ipsl-cm5a-lr"
-output="aggregated"
+gcm="ipsl-cm5a-lr" #reanalysis, ipsl-cm5a-lr
+output="aggregated" #aggregated
 
 #handle commandline parameters
 GetoptLong::GetoptLong(
   "startId=i", "ID to start processing, optional, default (1)",
   "endId=i", "ID to end processing, optional, default (1). Must be >= startId",
-  "ids=s", "CSV string of IDs to process. If this argument is given, startId and endID are ignored.",
+  "ids=s", "CSV string of IDs to process. If this argument is given, startId and endID are ignored",
   "maxCores=i", "Maximum of CPU cores to be used, optional, default (1)",
   "run=s", "Emissions scenario (rcp26, rcp45, rcp60, rcp85), optional, default (rcp26)",
   "inputPath=s", "Path where well-known input files are available, mandatory",
@@ -30,63 +34,77 @@ GetoptLong::GetoptLong(
 )
 
 #validations
-
-#TODO validate ids csv
-#TODO consider other range formats, e.g. 1-3,11-13
-if (scale=="degree") {
-  #TODO if ids is given, then must be 1 or more unque integers, bewteen 1 and 39567
-  #else us startId and endID
+#implement assert_that
+if (ids == "") {
+  if (startId > endId)  stop("'endId' must be greater than 'startId'")
+  ids <- seq(startId, endId, by = 1)
   
+} else if (grepl("^([0-9]{1,5},)*[0-9]{1,5}$", ids)) {
+  ids <- unique(as.integer(strsplit(ids,",")[[1]]))
+  
+} else {
+  stop ("'ids' must be strictly comma separated integers")  
+  }
+
+
+if (scale=="degree") {
+  #TODO if ids is given, then must be 1 or more unique integers, bewteen 1 and 39567
   if (startId < 1 | startId > 39567 ) stop(sprintf("value out of range for 'startId' '%s'", startId))
   if (endId < 1 | endId > 39567 ) stop(sprintf("value out of range for 'endId' '%s'", endId))
-  if (startId > endId)  stop(sprintf("'endId' ('%s') must be greater than 'startId ('%s')", endId, startId))
+  
 }
 
 if (scale=="lmefao") {
-  #TODO if ids is given, then must be 1 or more unque integers, in the bespoke range
-  #of lmefao Ids
-  #else us startId and endID  
-  #when stratID and endID, then mustbe defaulting to valid choice within range
-  stop("lmefao scale not implemented")
+  #TODO if ids is given, then must be 1 or more unique integers, in the bespoke range
+  #of lmefao Ids 
+  grom_lme_fao <- sprintf("%smisc/groms/grom_lme_fao.rds", inputPath)
+  lmefao_range <- readRDS(grom_lme_fao) %>%
+    select(lme_fao_code) %>%
+    unique()%>%
+    arrange(lme_fao_code) %>%
+    pull()
   
+  if (!all(ids %in% lmefao_range)) stop ("ids aren't all lme_fao ids")
+
 }
+
+
 if (scale=="eez") {
   stop("eez scale not implemented")
 }
 
-if (!exists("inputPath")) stop
-if (!exists("outputPath")) stop
+if (!exists("inputPath")) stop ("inputPath not found")
+if (!exists("outputPath")) stop("outputPath not found")
 
 
 # start execution
 source('runmodel.R')
 source('helpers.R')
 
-# if ids is not given, then 
-# use this ids logic. This is dependent on scale. code should likely move into 
-# validation/initialisation above
-ids <- seq(startId, endId, by = 1)
+#any id already found in outputpath, excluded from ids (must be made scale dependent)
 ids <- ids[!ids %in% grid_ids_found(outputPath)]
 
-# if the length of ids is still 0 after this, then stop
-if (length(ids) > 0) {
+# if the length of ids is 0 after this, then stop
+numJobs <- length(ids)
+if (numJobs > 0) {
   
-  numCores <- ifelse(length(ids) > maxCores, maxCores, length(ids))
+  numCores <- min(numJobs, maxCores)
   
-  the_cluster <- parallel::makeForkCluster(getOption("cl.cores", numCores))
+  theCluster <- parallel::makeForkCluster(getOption("cl.cores", numCores))
   
   if(!dryRun) {
-    discard_output <- parallel::clusterApplyLB(the_cluster
+    discard_output <- parallel::clusterApplyLB(theCluster
                                                ,x=ids
                                                ,fun=rungridsep
                                                ,gcm=gcm
                                                ,run=run
                                                ,output=output
                                                ,input_files_location = inputPath
-                                               ,output_files_location = outputPath)
+                                               ,output_files_location = outputPath
+                                               ,scale = scale)
   }
   
-  parallel::stopCluster(the_cluster)
+  parallel::stopCluster(theCluster)
   
 }
 
