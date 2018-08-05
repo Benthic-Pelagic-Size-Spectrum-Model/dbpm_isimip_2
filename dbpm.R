@@ -4,6 +4,7 @@
 library(tidyr, warn.conflicts = FALSE)
 library(magrittr, warn.conflicts = FALSE)
 library(dplyr, warn.conflicts = FALSE)
+library(assertthat, warn.conflicts = FALSE)
 
 #if (!require("GetoptLong")) install.packages("GetoptLong", repos ="https://cran.csiro.au/")
 rm(list=ls())
@@ -34,18 +35,16 @@ GetoptLong::GetoptLong(
 )
 
 #validations
-#implement assert_that
+assert_that(scale %in% c("degree", "lmefao", "eez"))
 if (ids == "") {
-  if (startId > endId)  stop("'endId' must be greater than 'startId'")
+  assert_that (startId > endId, msg = "'endId' must be greater than 'startId'")
   ids <- seq(startId, endId, by = 1)
   
-} else if (grepl("^([0-9]{1,5},)*[0-9]{1,5}$", ids)) {
+} else {
+  assert_that(grepl("^([0-9]{1,5},)*[0-9]{1,5}$", ids), "'ids' must be strictly comma separated integers")
   ids <- unique(as.integer(strsplit(ids,",")[[1]]))
   
-} else {
-  stop ("'ids' must be strictly comma separated integers")  
-  }
-
+} 
 
 if (scale=="degree") {
   #TODO if ids is given, then must be 1 or more unique integers, bewteen 1 and 39567
