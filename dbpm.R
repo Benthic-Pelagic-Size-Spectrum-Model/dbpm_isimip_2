@@ -56,8 +56,8 @@ if (scale=="degree") {
 if (scale=="lmefao") {
   #TODO if ids is given, then must be 1 or more unique integers, in the bespoke range
   #of lmefao Ids 
-  grom_lme_fao <- sprintf("%smisc/groms/grom_lme_fao.rds", inputPath)
-  lmefao_range <- readRDS(grom_lme_fao) %>%
+
+  lmefao_range <- readRDS("lme_scale/grom_lme_fao.rds") %>%
     select(lme_fao_code) %>%
     unique()%>%
     arrange(lme_fao_code) %>%
