@@ -35,9 +35,9 @@ GetoptLong::GetoptLong(
 )
 
 #validations
-assert_that(scale %in% c("degree", "lmefao", "eez"))
+assert_that((scale %in% c("degree", "lmefao", "eez")), msg = "'scale' must one of 'degree', 'lmefao', 'eez'")
 if (ids == "") {
-  assert_that (startId > endId, msg = "'endId' must be greater than 'startId'")
+  assert_that (startId >= endId, msg = "'endId' must be greater than 'startId'")
   ids <- seq(startId, endId, by = 1)
   
 } else {
