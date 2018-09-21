@@ -1,0 +1,20 @@
+Package: dbpm
+Title: Dynamic Benthic Pelagic Model
+Version: 0.0.0.9000
+Authors@R: c(
+  person("Julia", "Blanchard", email = "julia.blanchard@utas.edu.au", role = c("aut", "cre")),
+  person("Just", "Berkhout", email = "just.berkhout@utas.edu.au", role = "aut")
+  )
+Description: To be described
+Imports:
+  assertthat,
+  dplyr,
+  GetoptLong,
+  magrittr,
+  parallel,
+  tidyr
+  
+Depends: R (>= 3.5.1)
+License: What license is it under?
+Encoding: UTF-8
+LazyData: true

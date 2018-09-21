@@ -6,20 +6,20 @@ library(magrittr, warn.conflicts = FALSE)
 library(dplyr, warn.conflicts = FALSE)
 library(assertthat, warn.conflicts = FALSE)
 
-#if (!require("GetoptLong")) install.packages("GetoptLong", repos ="https://cran.csiro.au/")
 rm(list=ls())
 
 #set defaults 
-startId <- 1
-endId <- 1
-ids <- ""
-run <- "rcp26"
-maxCores <- 1
-VERSION <- "0.02 (03-Aug-2018)"
-dryRun <- FALSE
-scale <- "degree" #degree, lmefao, eez
-gcm="ipsl-cm5a-lr" #reanalysis, ipsl-cm5a-lr
-output="aggregated" #aggregated
+startId   <- 1
+endId     <- 1
+ids       <- ""
+run       <- "rcp26"
+maxCores  <- 1
+VERSION   <- "0.02 (03-Aug-2018)"
+dryRun    <- FALSE
+scale     <- "degree" #degree, lmefao, eez
+gcm       <- "ipsl-cm5a-lr" #reanalysis, ipsl-cm5a-lr
+output    <- "aggregated" #aggregated
+overwrite <- TRUE
 
 #handle commandline parameters
 GetoptLong::GetoptLong(
@@ -31,7 +31,8 @@ GetoptLong::GetoptLong(
   "inputPath=s", "Path where well-known input files are available, mandatory",
   "outputPath=s", "Path where output files can and will be written, mandatory",
   "dryRun!", "if set, the long running model code will not be run; all other code will run (default = FALSE, i.e. will run all)",
-  "scale=s", "Scale (degree, lmefao, eez) (default = degree)"
+  "scale=s", "Scale (degree, lmefao, eez) (default = degree)",
+  "overwrite!", "if TRUE, will overwrite existing versions of the generated output in the output location (default = TRUE)"
 )
 
 #validations
@@ -84,8 +85,12 @@ if (!exists("outputPath")) stop("outputPath not found")
 source('runmodel.R')
 source('helpers.R')
 
-#any id already found in outputpath, excluded from ids (must be made scale dependent)
-ids <- ids[!ids %in% grid_ids_found(outputPath)]
+# if not in overwrite mode, then
+# any id already found in outputpath must be excluded from ids 
+# this (must be made dependent on the scale argument)
+if (!overwrite) {
+  ids <- ids[!ids %in% grid_ids_found(outputPath)]
+}
 
 # if the length of ids is 0 after this, then stop
 numJobs <- length(ids)
@@ -96,15 +101,16 @@ if (numJobs > 0) {
   theCluster <- parallel::makeForkCluster(getOption("cl.cores", numCores))
   
   if(!dryRun) {
-    discard_output <- parallel::clusterApplyLB(theCluster
-                                               ,x=ids
-                                               ,fun=rungridsep
-                                               ,gcm=gcm
-                                               ,run=run
-                                               ,output=output
-                                               ,input_files_location = inputPath
-                                               ,output_files_location = outputPath
-                                               ,scale = scale)
+    discard_output <- parallel::clusterApplyLB(
+      theCluster
+      ,x=ids
+      ,fun=rungridsep
+      ,gcm=gcm
+      ,run=run
+      ,output=output
+      ,input_files_location = inputPath
+      ,output_files_location = outputPath
+      ,scale = scale)
   }
   
   parallel::stopCluster(theCluster)
