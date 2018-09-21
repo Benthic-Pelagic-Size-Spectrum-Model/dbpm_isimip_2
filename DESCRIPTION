@@ -12,6 +12,7 @@ Imports:
   GetoptLong,
   magrittr,
   parallel,
+  stringr,
   tidyr
   
 Depends: R (>= 3.5.1)

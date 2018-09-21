@@ -1,28 +1,22 @@
-grid_ids_found <- function (thepath) {
+.get_path <- function(run, scale, output_path) {
+  scale <- ifelse (scale=="degree", "igrid", scale)
+  file_path <- file.path(output_path, scale, run)
+  file_path <- gsub("/+", "/", file_path)
   
-  #TODO return NA  for path not exists
-  
-  #retrieve filenames in a vector
-  
-  #thepath <- "/rd/gem/private/fishmip_outputs/20170802_trial/"
-  filenames <-  data.frame(unlist(
-    list.files(path = thepath, 
-               pattern = "RData$",
-               full.names = FALSE)
-  ),stringsAsFactors = FALSE)
-  
-  names(filenames) <- "filename"
-  
-  if (nrow(filenames)==0){
-    retval <-  0
-  } else {
-    
-    filenames$gridid <- as.numeric(stringr::str_match(filenames$filename, "igrid_(.+?)_")[,2])
-    retval <- filenames$gridid
-  }
-  return(retval)
+  return(file_path)
 }
 
+.find_existing_output <- function(run, scale, output_path) {
+
+  path <- .get_path(run, scale, output_path)
+  files <- list.files(.get_path(run, scale, output_path), pattern = "rds$")
+  id_pattern <- "(?<=_)[0-9]+(?=_)"
+  ids <- as.numeric(
+    stringr::str_extract(files, id_pattern)
+  )
+
+  return(sort(ids))
+}
 
 get_in_file_name <- function(run, grid_id, in_path="/rd/gem/private/fishmip_inputs"){
   

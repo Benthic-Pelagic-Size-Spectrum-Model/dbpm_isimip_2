@@ -89,7 +89,8 @@ source('helpers.R')
 # any id already found in outputpath must be excluded from ids 
 # this (must be made dependent on the scale argument)
 if (!overwrite) {
-  ids <- ids[!ids %in% grid_ids_found(outputPath)]
+  ids_found <- find_existing_output(run, scale, outputPath)
+  ids <- ids[!ids %in% ids_found]
 }
 
 # if the length of ids is 0 after this, then stop
