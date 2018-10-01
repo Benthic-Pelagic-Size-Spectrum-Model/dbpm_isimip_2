@@ -5,7 +5,7 @@ library(rgdal)
 
 library(gridExtra)
 
-area_means <- function(run, varname, nc_path, area="Global"){
+.area_means <- function(run, varname, nc_path, area="Global"){
 
   nc_filename <- sprintf("%s/dbpm_ipsl-cm5a-lr_%s_no-fishing_no-oa_%s.nc", nc_path, run, varname)
   
@@ -35,7 +35,7 @@ area_means <- function(run, varname, nc_path, area="Global"){
   return (my_means)
 }
 
-plot_area_means <- function(runs, varname, nc_path, area="Global", smooth=FALSE){
+.plot_area_means <- function(runs, varname, nc_path, area="Global", smooth=FALSE){
 
   source("helpers.R", local = TRUE)
   numcores <- length(runs)
@@ -43,7 +43,7 @@ plot_area_means <- function(runs, varname, nc_path, area="Global", smooth=FALSE)
   
   output <- parallel::clusterApplyLB(the_cluster
                                      ,x=runs
-                                     ,fun=area_means
+                                     ,fun=.area_means
                                      ,varname=varname
                                      ,nc_path=nc_path
                                      ,area=area)
@@ -80,14 +80,21 @@ plot_area_means <- function(runs, varname, nc_path, area="Global", smooth=FALSE)
   return(the_plot)
 }
 
+
+.four_area_means_plots <- function(runs, varname, nc_path){
+  
+  p1 <- .plot_area_means(runs, varname, smooth = TRUE, nc_path = nc_path)
+  p2 <- .plot_area_means(runs, varname, nc_path = nc_path)
+  p3 <- .plot_area_means(runs, varname, area="AusEEZ", smooth = TRUE, nc_path = nc_path)
+  p4 <- .plot_area_means(runs, varname, area="AusEEZ", nc_path = nc_path)
+  
+  gridExtra::grid.arrange(p1, p2, p3, p4, ncol=2)
+  
+  
+}
+
 myvar <- "tsb"
 myruns <- c("history", "rcp26", "rcp45", "rcp60", "rcp85")
 mync_path <- "/rd/gem/public/fishmip/netcdf"
 
-
-p1 <- plot_area_means(myruns, myvar, smooth = TRUE, nc_path = mync_path)
-p2 <- plot_area_means(myruns, myvar, nc_path = mync_path)
-p3 <- plot_area_means(myruns, myvar, area="AusEEZ", smooth = TRUE, nc_path = mync_path)
-p4 <- plot_area_means(myruns, myvar, area="AusEEZ", nc_path = mync_path)
-
-gridExtra::grid.arrange(p1, p2, p3, p4, ncol=2)
+.four_area_means_plots(myruns, myvar, mync_path)
