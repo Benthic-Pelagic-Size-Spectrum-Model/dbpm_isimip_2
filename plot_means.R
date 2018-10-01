@@ -5,7 +5,7 @@ library(rgdal)
 
 library(gridExtra)
 
-area_means <- function(run, varname, nc_path="/rd/gem/private/fishmip_outputs/aug_2017_2/netcdf", area="Global"){
+area_means <- function(run, varname, nc_path, area="Global"){
 
   nc_filename <- sprintf("%s/dbpm_ipsl-cm5a-lr_%s_no-fishing_no-oa_%s.nc", nc_path, run, varname)
   
@@ -35,7 +35,7 @@ area_means <- function(run, varname, nc_path="/rd/gem/private/fishmip_outputs/au
   return (my_means)
 }
 
-plot_area_means <- function(runs, varname, nc_path="/rd/gem/private/fishmip_outputs/aug_2017_2/netcdf", area="Global", smooth=FALSE){
+plot_area_means <- function(runs, varname, nc_path, area="Global", smooth=FALSE){
 
   source("helpers.R", local = TRUE)
   numcores <- length(runs)
@@ -82,17 +82,12 @@ plot_area_means <- function(runs, varname, nc_path="/rd/gem/private/fishmip_outp
 
 myvar <- "tsb"
 myruns <- c("history", "rcp26", "rcp45", "rcp60", "rcp85")
+mync_path <- "/rd/gem/public/fishmip/netcdf"
 
 
-p1 <- plot_area_means(myruns, myvar, smooth = TRUE, nc_path = "/rd/gem/public/fishmip/netcdf")
-p2 <- plot_area_means(myruns, myvar, nc_path = "/rd/gem/public/fishmip/netcdf")
-p3 <- plot_area_means(myruns, myvar, area="AusEEZ", smooth = TRUE, nc_path = "/rd/gem/public/fishmip/netcdf")
-p4 <- plot_area_means(myruns, myvar, area="AusEEZ", nc_path = "/rd/gem/public/fishmip/netcdf")
+p1 <- plot_area_means(myruns, myvar, smooth = TRUE, nc_path = mync_path)
+p2 <- plot_area_means(myruns, myvar, nc_path = mync_path)
+p3 <- plot_area_means(myruns, myvar, area="AusEEZ", smooth = TRUE, nc_path = mync_path)
+p4 <- plot_area_means(myruns, myvar, area="AusEEZ", nc_path = mync_path)
 
 gridExtra::grid.arrange(p1, p2, p3, p4, ncol=2)
-
-
-
-
-
-
