@@ -4,7 +4,7 @@ This is a dynamic size spectrum model for modelling the coupling "pelagic" size-
 and "benthic" detritivores that share a common resource pool (detritus).
 
 This repository is a global application of dbpm for studying climate change impacts on marine ecosystems and 
-potential fisheries as part of the Fish-MIP project and the Australian Research Council Discover Project "Rewiring Marine Foodwebs".
+potential fisheries as part of the Fish-MIP project and the Australian Research Council Discovery Project "Rewiring Marine Foodwebs".
 
 The model has been been developed through the following papers:
 
