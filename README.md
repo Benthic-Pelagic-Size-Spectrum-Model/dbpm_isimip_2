@@ -38,8 +38,6 @@ Extensions to the ecological model have also been made to capture habitat comple
 
 Rogers A, Blanchard JL, Mumby PJ. 2014. Vulnerability of coral reef fisheries to a loss of structural complexity. Current Biology. 24(9): 1000-1005.
 
-Rogers A, Blanchard JL, Mumby PJ. 2018. Fisheries productivity under progressive coral reef degradation. Current Biology. 55(3):1041-1049.
-
 Rogers A, Blanchard JL, Mumby PJ. 2018. Fisheries productivity under progressive coral reef degradation. Current Biology. Journal of Applied Ecology. 55(3):1041-1049.
 
 Rogers A, Blanchard JL, Newman SP, Dryden CS, Mumby PJ. 2018. High refuge availability on coral reefs increases the vulnerability of reef‐associated predators to overexploitation. Ecology. 99(2:450-463
