@@ -1,6 +1,6 @@
 
-sizemodel<-function(params,ERSEM.det.input=F,U_mat,V_mat,W_mat,temp.effect=T,eps=1e-5,output="aggregated"){
-  
+sizemodel<-function(params,ERSEM.det.input=F,U_mat,V_mat,W_mat,temp.effect=T,eps=1e-5,output="aggregated",
+                    use.init = FALSE, burnin.len){
   
   
   with(params, {
@@ -16,11 +16,14 @@ sizemodel<-function(params,ERSEM.det.input=F,U_mat,V_mat,W_mat,temp.effect=T,eps
     # Senescence Mortality also included.  Options to include dynamic reproduction and predator handling time (but not currently used).
     #
     # Code modified for global fishing mortality rate application. JLB 17/02/2014
+    # Code modified to include temperature scaling on senescence and detrital flux. RFH 18/06/2020
     # ---------------------------------------------------------------------------------------
     # Input parameters to vary:
     
     ui0 <- 10^pp          # time series of intercept of plankton size spectrum (estimated from GCM, biogeophysical model output or satellite data).		
     r.plank <- r.plank   # time series of slope of plankton size spectrum (estimated from GCM, biogeophysical model output or satellite data).  	
+    
+    
     sst <- sst            # time series of temperature in water column
     sft <- sft		      #time series of temperature near seabed
     sinking.rate <- sinking.rate  	      #time series of export ratio ( read in sizeparam)
@@ -144,7 +147,11 @@ sizemodel<-function(params,ERSEM.det.input=F,U_mat,V_mat,W_mat,temp.effect=T,eps
     V[ref.det:120,1]<-V.init[ref.det:120]  # set initial detritivore spectrum  
     W[1]<-W.init             # set initial detritus biomass density (g.m^-3) 
     
-    
+    if(use.init == TRUE){
+    # set up with the initial values from previous run
+      U[ref:length(x),1]<-U.init[ref:length(x)]           # set initial consumer size spectrum from previous run
+      V[ref.det:length(x),1]<-V.init[ref.det:length(x)]  # set initial detritivore spectrum from previous run
+    }
     
     #intrinsic natural mortality
     OM.u<-mu0*10^(-0.25*x)
@@ -164,7 +171,11 @@ sizemodel<-function(params,ERSEM.det.input=F,U_mat,V_mat,W_mat,temp.effect=T,eps
     
     #iteration over time, N [days]
     
-    for (i in 1:(Neq)) {
+    # pb = txtProgressBar(min = 0, max = Neq, initial = 1, style = 3) # Initial progress bar
+    
+    for (i in 1:Neq) {
+      
+    #  setTxtProgressBar(pb, i) # Update progress bar
       
       if(W[i]=="NaN"|W[i]<0)
       {
@@ -212,7 +223,6 @@ sizemodel<-function(params,ERSEM.det.input=F,U_mat,V_mat,W_mat,temp.effect=T,eps
       
       
       # feeding rates
-      
       f.pel<-pel.Tempeffect[i]*as.vector(((A.u*10^(x*alpha.u)*pref.pel)*(U[,i]*dx)%*%(gphi))/(1+handling*(A.u*10^(x*alpha.u)*pref.pel)*(U[,i]*dx)%*%(gphi))) # yr-1
       
       f.ben<-pel.Tempeffect[i]*as.vector(((A.u*10^(x*alpha.u)*pref.ben)*(V[,i]*dx)%*%(gphi))/(1+handling*(A.u*10^(x*alpha.u)*pref.ben)*(V[,i]*dx)%*%(gphi))) # yr-1
@@ -237,10 +247,10 @@ sizemodel<-function(params,ERSEM.det.input=F,U_mat,V_mat,W_mat,temp.effect=T,eps
       #PM.u[,i]<-as.vector((1-f.pel)*(A.u*10^(x*alpha.u)*pref.pel)*(U[,i]*dx)%*%(mphi))  #yr-1 
       
       
-      Z.u[,i]<- PM.u[,i] + pel.Tempeffect[i]*OM.u + SM.u + Fvec.u     #yr-1
+      Z.u[,i]<- PM.u[,i] + pel.Tempeffect[i]*OM.u + pel.Tempeffect[i]*SM.u + Fvec.u     #yr-1
       
       # Benthos growth integral
-      GG.v[,i]<-(1-def.low)*K.d*f.det         #yr-1
+      GG.v[,i]<-(1-def.low)*K.d*f.det #yr-1
       
       #reproduction
       if (repro.on==1) R.v[,i]<-(1-def.low)*(1-(K.d+AM.v))*(f.det) #yr-1
@@ -254,7 +264,7 @@ sizemodel<-function(params,ERSEM.det.input=F,U_mat,V_mat,W_mat,temp.effect=T,eps
       
       #PM.v[,i]<-as.vector((1-f.ben)*(A.u*10^(x*alpha.u)*pref.ben)*(U[,i]*dx)%*%(mphi))  #yr-1
       
-      Z.v[,i]<-PM.v[,i]+ ben.Tempeffect[i]*OM.v + SM.v  + Fvec.u  #yr-1
+      Z.v[,i]<-PM.v[,i]+ ben.Tempeffect[i]*OM.v + ben.Tempeffect[i]*SM.v  + Fvec.u  #yr-1
       
       #total biomass density eaten by pred (g.m-2.yr-1)
       
@@ -297,10 +307,10 @@ sizemodel<-function(params,ERSEM.det.input=F,U_mat,V_mat,W_mat,temp.effect=T,eps
           #  + benthic spectrum inputs (dead stuff - already on/in seafloor)
           
           input.w<-(sinking.rate[i]*(sum(defbypred[ref:Nx]*dx)
-                                     + sum(OM.u[1:Nx]*U[1:Nx,i]*10^(x[1:Nx])*dx) 
-                                     + sum(SM.u[1:Nx]*U[1:Nx,i]*10^(x[1:Nx])*dx))
-                    + (sum(OM.v[1:Nx]*V[1:Nx,i]*10^(x[1:Nx])*dx) 
-                       + sum(SM.v[1:Nx]*V[1:Nx,i]*10^(x[1:Nx])*dx)) )
+                                     + sum(pel.Tempeffect[i]*OM.u[1:Nx]*U[1:Nx,i]*10^(x[1:Nx])*dx) 
+                                     + sum(pel.Tempeffect[i]*SM.u[1:Nx]*U[1:Nx,i]*10^(x[1:Nx])*dx))
+                    + (sum(ben.Tempeffect[i]*OM.v[1:Nx]*V[1:Nx,i]*10^(x[1:Nx])*dx) 
+                       + sum(ben.Tempeffect[i]*SM.v[1:Nx]*V[1:Nx,i]*10^(x[1:Nx])*dx)) )
           # )
           
         }
@@ -308,7 +318,7 @@ sizemodel<-function(params,ERSEM.det.input=F,U_mat,V_mat,W_mat,temp.effect=T,eps
         
         if (det.coupling==0.0) {
           
-          input.w<-sum(OM.v[1:Nx]*V[1:Nx,i]*10^(x[1:Nx])*dx) + sum(SM.v[1:Nx]*V[1:Nx,i]*10^(x[1:Nx])*dx)
+          input.w<-sum(ben.Tempeffect[i]*OM.v[1:Nx]*V[1:Nx,i]*10^(x[1:Nx])*dx) + sum(ben.Tempeffect[i]*SM.v[1:Nx]*V[1:Nx,i]*10^(x[1:Nx])*dx)
           
         }
         
@@ -421,11 +431,8 @@ sizemodel<-function(params,ERSEM.det.input=F,U_mat,V_mat,W_mat,temp.effect=T,eps
       rm(j)
       
       
-      
-      
     }#end time iteration
-    
-    
+   
     return(list(U=U[,],GG.u=GG.u[,],PM.u=PM.u[,],V=V[,],GG.v=GG.v[,],PM.v=PM.v[,],Y.u=Y.u[,],Y.v=Y.v[,],W=W[], params=params))
     
     
@@ -440,7 +447,10 @@ sizemodel<-function(params,ERSEM.det.input=F,U_mat,V_mat,W_mat,temp.effect=T,eps
 
 
 
-sizeparam<-function(equilibrium=F, dx=0.1,xmin=-12,xmax=6,xmin.consumer.u=-7,xmin.consumer.v=-7,tmax=100, tstepspryr=48,fmort.u =0.0,fminx.u=1, fmort.v = 0.0,fminx.v=1,er=0.5,pp=-3,slope=-1,lat=NA,lon=NA,depth=500,sst=20,sft=20){
+sizeparam<-function(equilibrium=F, dx=0.1,xmin=-12,xmax=6,xmin.consumer.u=-7,xmin.consumer.v=-7,tmax=100,
+                    tstepspryr=48,fmort.u =0.0,fminx.u=1, fmort.v = 0.0,fminx.v=1,er=0.5,pp=-3,slope=-1,lat=NA,
+                    lon=NA,depth=500,sst=20,sft=20,
+                    use.init = FALSE, U.initial = NA, V.initial = NA ,W.initial = NA){
   #---------------------------------------------------------------------------------------
   # FUNCTION TO GET Parameters of model
   #---------------------------------------------------------------------------------------
@@ -571,6 +581,12 @@ sizeparam<-function(equilibrium=F, dx=0.1,xmin=-12,xmax=6,xmin.consumer.u=-7,xmi
   param$U.init<-10^param$pp[1]*10^(param$r.plank[1]*param$x)  # (phyto+zoo)plankton + pelagic predator size spectrum  
   param$V.init<-param$sinking.rate[1]*10^param$pp[1]*10^(param$r.plank[1]*param$x)  # set initial detritivore spectrum  
   param$W.init<-0.00001  # abritrary initial value for detritus
+  
+  if(use.init == TRUE){
+    param$U.init <- U.initial
+    param$V.init <- V.initial
+    param$W.init <- W.initial
+  }
   
   param$equilibrium=equilibrium
   
