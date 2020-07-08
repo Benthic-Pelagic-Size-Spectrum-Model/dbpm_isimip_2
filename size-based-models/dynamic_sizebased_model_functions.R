@@ -5,6 +5,66 @@ sizemodel<-function(params,ERSEM.det.input=F,U_mat,V_mat,W_mat,temp.effect=T,eps
   
   with(params, {
     
+    # CN trial - need to specify all of the params inputs if you are not running with()...
+    lat = params$lat 
+    lon = params$lon
+    depth = params$depth
+    pp = params$pp 
+    r.plank = params$r.plank 
+    er = params$er
+    sst = params$sst        
+    sft = params$sft
+    Fmort.u = params$Fmort.u
+    Fmort.v = params$Fmort.v
+    min.fishing.size.u = params$min.fishing.size.u
+    min.fishing.size.v = params$min.fishing.size.v
+    pref.ben = params$pref.ben
+    pref.pel = params$pref.pel          
+    det.coupling = params$det.coupling
+    sinking.rate = params$sinking.rate
+    q0 = params$q0
+    sd.q = params$sd.q
+    A.u = params$A.u
+    A.v = params$A.v
+    alpha.u = params$alpha.u
+    alpha.v = params$alpha.v
+    def.high = params$def.high
+    def.low = params$def.low
+    K.u = params$K.u
+    K.v = params$K.v
+    K.d = params$K.d
+    AM.u = params$AM.u
+    AM.v = params$AM.v
+    handling = params$handling
+    repro.on = params$repo.on
+    c1 = params$c1
+    E = params$E
+    k = params$k
+    mu0 = params$mu0
+    xs = params$xs
+    p.s = params$p.s
+    k.sm = params$k.sm 
+    dx = params$dx
+    xmin = params$xmin
+    x1 = params$x1
+    x1.det = params$x1.det         
+    xmax = params$xmax
+    xmax2 = params$xmax2
+    x = params$x
+    Nx = params$Nx
+    ref = params$ref
+    ref.det = params$ref.det
+    Fref.u = params$Fref.u
+    Fref.v = params$Fref.v
+    idx = params$idx
+    tmax = params$tmax
+    delta_t = params$delta_t
+    Neq = params$Neq
+    U.init = params$U.init
+    V.init = params$V.init
+    W.init = params$W.init
+    equilibrium = params$equilibrium
+    
     #---------------------------------------------------------------------------------------
     # Model for a dynamical ecosystem comprised of: two functionally distinct size spectra (predators and detritivores), size structured primary producers and an unstructured detritus resource pool. 
     # time implicit upwind difference discretization algorithm (from Ken Andersen)
@@ -166,8 +226,42 @@ sizemodel<-function(params,ERSEM.det.input=F,U_mat,V_mat,W_mat,temp.effect=T,eps
     
     #Fvec[Fref:Nx] = 0.09*(x[Fref:Nx]/ log10(exp(1)) ) + 0.04 # from Benoit & Rochet 2004 
     
-    Fvec.u[Fref.u:Nx] = rep(Fmort.u,length(Fvec.u[Fref.u:Nx]))  
+    Fvec.u[Fref.u:Nx] = rep(Fmort.u,length(Fvec.u[Fref.u:Nx]))# CN : fishing mortality from smalles size class fished to biggest size class 
     Fvec.v[Fref.v:Nx] = rep(Fmort.v,length(Fvec.v[Fref.v:Nx]))  
+    
+    # CN - here is where you add fishing... instead of running the above 
+    # Fvec.u:empty vector to hold fishing  mortality rate at each size class 
+    # Fref.u: position in Fvec corresponding to the smallest size fished (it depends on min.fishing.size: minimum size of individuals fished in log10 - i.e. selectivity) 
+    # Nx: lenght of vecotor with size bins
+    # Fmort: fishing mortality rate by size 
+    
+    # instead:
+    # Fvec.u = S.u*Q.u*E.u*T
+    
+    # TO DO 
+    # though effort and fishing mortality should be time-variant - is this the right place? 
+    # check all places inn the code where fishing related dynamics/outputs are specified 
+    # check mizer-fleet and move those bits where appropriate 
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     
     #iteration over time, N [days]
     
