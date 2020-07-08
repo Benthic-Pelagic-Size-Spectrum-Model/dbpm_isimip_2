@@ -5,9 +5,18 @@ source("helpers.R")
 rungridsep <- function(igrid=1
                        ,gcm="ipsl-cm5a-lr"
                        ,run="rcp45"
-                       ,output="aggregated"
+                       ,output="aggregated" 
                        ,input_files_location = "/rd/gem/private/fishmip_inputs/"
                        ,output_files_location = "/rd/gem/private/fishmip_outputs/") {
+  
+  # CN trial + questions 
+  igrid=1 # CN needed for sprintt() to read and print output in a C like format
+  gcm="ipsl-cm5a-lr" # CN alternative is a "reanalysis" - what would this happen? 
+  run="rcp45" # CN same as igrid
+  output="aggregated" # CN: results (biomass and caches) are aggregated by U (fish) V (detritivores) and W (detritus pool) and by size classes 
+  input_files_location = "/rd/gem/private/fishmip_inputs/"
+  output_files_location = "/rd/gem/private/fishmip_outputs/"
+  # CN questions: start_of_history_weeks; end_of_history_weeks don't match up with the input I have (see line 49) - will this be different when properly running the model? 
   
   # we need to run the model with time-varying inputs   
   # the largest dt of the model is a monthly time step (Q-F was daily...which may still be needed) 
@@ -27,21 +36,26 @@ rungridsep <- function(igrid=1
     
   } else {
     
-    input_filename <- sprintf("%sgrid_%i_inputs2_%s_%s.rds", input_files_location, igrid, gcm, run)
-    inputs <- readRDS(input_filename)
-
-    #plot(inputs$ts$sst) 
+    # input_filename <- sprintf("%sgrid_%i_inputs2_%s_%s.rds", input_files_location, igrid, gcm, run)
+    # inputs <- readRDS(input_filename)
+    # plot(inputs$ts$sst)
     
-    #historical_means <- colMeans(inputs$ts[(301*48):(300*48+55*48),])
-    historical_means <- colMeans(inputs$ts[start_of_history_weeks:end_of_history_weeks,])
+    # #historical_means <- colMeans(inputs$ts[(301*48):(300*48+55*48),])
+    # historical_means <- colMeans(inputs$ts[start_of_history_weeks:end_of_history_weeks,])
+    # 
+    # #replace spinup if different from historical_means
+    # inputs$ts[start_of_spinup_weeks:end_of_spinup_weeks,"sst"] <- historical_means["sst"]
+    # inputs$ts[start_of_spinup_weeks:end_of_spinup_weeks,"sbt"] <- historical_means["sbt"]
+    # inputs$ts[start_of_spinup_weeks:end_of_spinup_weeks,"er"] <- historical_means["er"]
+    # inputs$ts[start_of_spinup_weeks:end_of_spinup_weeks,"intercept"] <- historical_means["intercept"]
+    # inputs$ts[start_of_spinup_weeks:end_of_spinup_weeks,"slope"] <- historical_means["slope"]
+    # rm(historical_means)
     
-    #replace spinup if different from historical_means
-    inputs$ts[start_of_spinup_weeks:end_of_spinup_weeks,"sst"] <- historical_means["sst"]
-    inputs$ts[start_of_spinup_weeks:end_of_spinup_weeks,"sbt"] <- historical_means["sbt"]
-    inputs$ts[start_of_spinup_weeks:end_of_spinup_weeks,"er"] <- historical_means["er"]
-    inputs$ts[start_of_spinup_weeks:end_of_spinup_weeks,"intercept"] <- historical_means["intercept"]
-    inputs$ts[start_of_spinup_weeks:end_of_spinup_weeks,"slope"] <- historical_means["slope"]
-    rm(historical_means)
+    # CN trial at 1 grid cell - otherwise run the above lines 
+    inputs <- readRDS("/Users/nov017/Dropbox/DBPM_fishing_extension/pi_26_cesm.rds")
+    
+    str(inputs)
+    
   }
   
   #get params 
@@ -71,7 +85,14 @@ rungridsep <- function(igrid=1
                           ,W_mat = NULL
                           ,temp.effect = TRUE) 
   
+  # CN what is this doing? no turnover? 
   result_set$notrun <- ifelse(any(result_set$U[150,]=="NaN")==FALSE, FALSE, TRUE)
+  
+  # CN plot results 
+  plotsizespectrum(result_set,result_set$params,itime = params$Neq)
+  # CN see other functions calculating outputs in dynamics_sizespectrum_model_functions.R  
+  # CN optimize yield - does this work? is it what Mike was working on?  
+  # trial<-optimizeYield(result_set)
   
   # print((proc.time()-ptm)/60.0)
   
