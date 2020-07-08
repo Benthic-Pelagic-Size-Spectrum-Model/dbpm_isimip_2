@@ -1,5 +1,7 @@
 # dbpm - dynamic benthic pelagic model
 
+# trial cami
+
 This repository is a global application of dbpm for studying climate change impacts on marine ecosystems and potential fisheries as part of the Fish-MIP and ISI-MIP projects and the Australian Research Council Discovery Project "Rewiring Marine Foodwebs".
 
 The dbpm model is a coupled physical-ecological model that is forced with climate variables and can be applied globally (1 degree grid cells) or aggregated into Large Marine Ecosystems (lmes) or other spatial units. The ecological model is a dynamic size spectrum model for modelling the coupling "pelagic" size-based predators and "benthic" detritivores that share a unstructured resource pool (detritus).
