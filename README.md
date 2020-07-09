@@ -1,6 +1,5 @@
 # dbpm - dynamic benthic pelagic model
 
-# trial cami
 
 This repository is a global application of dbpm for studying climate change impacts on marine ecosystems and potential fisheries as part of the Fish-MIP and ISI-MIP projects and the Australian Research Council Discovery Project "Rewiring Marine Foodwebs".
 
