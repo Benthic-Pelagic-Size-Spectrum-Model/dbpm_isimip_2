@@ -10,6 +10,7 @@ rungridsep <- function(igrid=1
                        ,output_files_location = "/rd/gem/private/fishmip_outputs/") {
   
   # CN trial + questions 
+  # trial commit from gem48
   igrid=1 # CN needed for sprintt() to read and print output in a C like format
   gcm="ipsl-cm5a-lr" # CN alternative is a "reanalysis" - what would this happen? 
   run="rcp45" # CN same as igrid
