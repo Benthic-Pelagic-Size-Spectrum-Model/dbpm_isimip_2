@@ -1,5 +1,5 @@
 
-source("./dbpm_CMIP6/input_funcs.R") # Set to where you have put the input_funcs folder
+source("input_funcs.R") # Set to where you have put the input_funcs folder
 
 getgridin <- function(igrid, curr_esm, curr_scen, save_path){
   curr_grid <- which(pp[,c("lat")]==depth[igrid,"lat"] & pp[,c("lon")]==depth[igrid,"lon"])
