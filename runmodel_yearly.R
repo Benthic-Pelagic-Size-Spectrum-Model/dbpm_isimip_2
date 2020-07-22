@@ -1,4 +1,5 @@
-source("./dbpm-ryan/size-based-models/dynamic_sizebased_model_functions.R", chdir = TRUE)
+# source("./dbpm-ryan/size-based-models/dynamic_sizebased_model_functions.R", chdir = TRUE)
+source("./size-based-models/dynamic_sizebased_model_functions.R", chdir = TRUE) # CN change dir 
 
 ## This script runs the DBPM input with inputs updating yearly. Script processes weekly inputs
 ## to be yearly inputs, interpolating between yearly input in the same way as weekly inputs
