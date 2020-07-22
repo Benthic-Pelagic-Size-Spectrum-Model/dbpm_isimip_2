@@ -22,13 +22,18 @@ esms <- c("GFDL-ESM4", "IPSL-CM6A-LR")
 scenario <- c("historical", "picontrol", "ssp126", "ssp585")
 
 for(i in 1:length(esms)){
- curr_esm <- esms[i]
-
+ 
+  # i = 1
+  curr_esm <- esms[i]
+ 
  # load(list.files(path=paste("./processed_forcings/", curr_esm, '/',  sep = ""), pattern = "*depth*", full.names = TRUE)) # Load esm depth file
  load(list.files(path=paste("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/", curr_esm, '/',  sep = ""), pattern = "*depth*", full.names = TRUE)) # Load esm depth file # CN new location on gem48
  # list.files("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/")
  
   for(j in 1:length(scenario)){
+    
+    # j = 1
+    
     curr_scen <- scenario[j]
     
     # save_path=paste("./processed_forcings/", curr_esm, '/', curr_scen, '/',  sep = "") # Where do you want the grid files to be saved?
@@ -58,10 +63,21 @@ for(i in 1:length(esms)){
    
 }
 
-
-
-
-
-
+#user   system  elapsed 
+#3.5566   3.4890 226.9408 
+#user     system    elapsed 
+#5.426267   4.775600 311.945783 
+#user     system    elapsed 
+#2.157733   1.810933 110.382567 
+#user     system    elapsed 
+#2.201133   1.883000 110.372633 
+#user     system    elapsed 
+#3.109267   2.745400 171.720650 
+#user     system    elapsed 
+#4.274733   3.764200 249.398533 
+#user    system   elapsed 
+#1.708133  1.630200 86.747667 
+#user    system   elapsed 
+#1.668067  1.440400 88.715533 
 
 
