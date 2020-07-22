@@ -6,7 +6,6 @@
 
 #### STEP 3: RUN THE MODEL
 # source("./DBPM/") # Set to the base folder for the DBPM runs
-source("/data/home/camillan/dbpm") # CN change directory 
 
 rm(list=ls())
 
@@ -22,19 +21,28 @@ scenario <- c("picontrol", "historical", "ssp126", "ssp585")
 temp.effect = T
 eps = 1e-5
 ERSEM.det.input = F
+# list.files()
 
-source('runmodel_yearly.R') # Load script to run model (YEARLY SCRIPT, CHANGE )
+source('runmodel_yearly.R') # Load script to run model (YEARLY SCRIPT, CHANGE ) # CN to run this you need to change directories - discuss this with Julia and Ryan 
+# source("runmodel.R") # CN this is set up to run the model adn save the results in the right directories - the _yearly version is Ryan's version and needs to be updated with new directories 
+# NOTE - code not working now - you still need to change directories as per Ryan code as inputs now are in folders (historical etc...)
 
 for(i in 1:length(esms)){ # Loop over esms
+  
+  # CN try only 1 model adn 1 scenario first 
+  i = 1
   curr_esm <- esms[i]
   
   load(list.files(path=paste("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/", curr_esm, '/',  sep = ""), pattern = "*depth*", full.names = TRUE)) # Load esm depth file
   
   for(j in 1:length(scenario)){ # Loop over scenario
+    # CN try only 1 model adn 1 scenario first 
+    j = 1
+    
     curr_scen <- scenario[j]
     
     input_loc <- paste("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/", curr_esm, "/", curr_scen, "/", sep = "")
-    output_loc <- paste("/../../rd/gem/private/fishmip_outputs/", curr_esm, "/", curr_scen, "/", sep = "") # CN might need to organise this folder better 
+    output_loc <- paste("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/", curr_esm, "/", curr_scen, "/", sep = "") 
     
     # set up cluster
     numcores= 25 
