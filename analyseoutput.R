@@ -400,9 +400,14 @@ levelplot(z,col.regions=terrain.colors(20))
 # load(file=paste("/../../rd/gem/private/fishmip_outputs/res_wts_igrid_",igrid,"_",gcm,"_",run,".RData",sep=""))
 # 
 # # check names of output to maniplate results, plot etc:
+# CN 
+res<-result_set
+
+
+
 # names(res)   
-# params<-res$params
-# Neq<-params$Neq
+params<-res$params
+Neq<-params$Neq
 # 
 # par(mfrow=c(3,1),mai=c(0.5,1,0.5,1))
 # # size spectra at end of simulation period
@@ -415,21 +420,21 @@ mtext(paste("Location ", itime=Neq,sep=""),outer=F,side=3)
 # 
 # #Total biomass
 # 
-# TotalUbiomass<-apply(res$U[params$ref:params$Nx,]*params$dx*10^params$x[params$ref:params$Nx],2,sum) 
-# TotalVbiomass<-apply(res$V[params$ref.det:params$Nx,]*params$dx*10^params$x[params$ref.det:params$Nx],2,sum) 
+TotalUbiomass<-apply(res$U[params$ref:params$Nx,]*params$dx*10^params$x[params$ref:params$Nx],2,sum) 
+TotalVbiomass<-apply(res$V[params$ref.det:params$Nx,]*params$dx*10^params$x[params$ref.det:params$Nx],2,sum) 
 # # par(mfrow=c(1,1))
-# plot((1:(Neq+1)/48),TotalUbiomass,typ="l",col="blue",ylim=c(min(TotalUbiomass,TotalVbiomass,res$W), max(TotalUbiomass,TotalVbiomass,res$W)),xlab="Years",ylab="Total Biomass Density",log="y") 
-# points((1:(Neq+1)/48),TotalVbiomass,typ="l",col="red",xlab="Years") 
-# points((1:(Neq+1)/48),res$W,typ="l",col="brown") 
+plot((1:(Neq+1)/48),TotalUbiomass,typ="l",col="blue",ylim=c(min(TotalUbiomass,TotalVbiomass,res$W), max(TotalUbiomass,TotalVbiomass,res$W)),xlab="Years",ylab="Total Biomass Density",log="y") 
+points((1:(Neq+1)/48),TotalVbiomass,typ="l",col="red",xlab="Years") 
+points((1:(Neq+1)/48),res$W,typ="l",col="brown") 
 # 
 # #Relative growth rates
 # 
-# plot(params$x[params$ref:params$Nx],res$GG.u[params$ref:params$Nx,params$Neq],log="y", type = "l", col = "blue", ylab= "Relative growth rate", xlim=c(params$x1.det,params$xmax),
-#      xlab = "Size", ylim = c(0.001,1000))
-# mean(res$GG.u[params$ref:params$Nx])
+plot(params$x[params$ref:params$Nx],res$GG.u[params$ref:params$Nx,params$Neq],log="y", type = "l", col = "blue", ylab= "Relative growth rate", xlim=c(params$x1.det,params$xmax),
+      xlab = "Size", ylim = c(0.001,1000))
+mean(res$GG.u[params$ref:params$Nx])
 # 
-# points(params$x[params$ref.det:params$Nx],res$GG.v[params$ref.det:params$Nx,params$Neq],log="y", type = "l", col = "red")
-# mean(res$GG.v)
+points(params$x[params$ref.det:params$Nx],res$GG.v[params$ref.det:params$Nx,params$Neq],log="y", type = "l", col = "red")
+mean(res$GG.v)
 # 
 # 
 # #  get fish-mip outputs 
