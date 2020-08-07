@@ -14,11 +14,11 @@ rungridsep <- function(igrid
   
   # CN trial 
   # where is igrid specified? in the loop that calls this function 
-  igrid <-3
+  igrid <-1
   # readRDS("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/GFDL-ESM4/historical/grid_1_GFDL-ESM4_historical.rds") # try reading file 
   gcm = "GFDL-ESM4" 
   protocol = "historical"
-  output = "aggregated"
+  output = "not-aggregated"
   input_files_location = input_loc 
   output_files_location = output_loc
   
@@ -383,6 +383,7 @@ rungridsep <- function(igrid
       
       # CN trial - not working when saving the whole file, but working when saving just a part of it... 
       # same below when data is not aggregated. 
+      dim(agg)
       readRDS(output_filename)
       load(output_filename)
       getwd()
@@ -400,6 +401,7 @@ rungridsep <- function(igrid
       output_filename <- paste(output_files_location, "dbpm_output_all_", igrid, '_', protocol, '.rds', sep = "") 
       # output_filename <-paste(output_files_location, protocol, "/", "dbpm_output_all_", igrid, '_', protocol, '.rds', sep = "") 
       saveRDS(result_set, file = output_filename, compress = FALSE)
+      # readRDS(output_filename)
       
     }
     

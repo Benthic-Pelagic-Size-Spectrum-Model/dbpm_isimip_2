@@ -7,6 +7,8 @@
 #### STEP 3: RUN THE MODEL
 # source("./DBPM/") # Set to the base folder for the DBPM runs
 setwd("/data/home/camillan/dbpm")
+setwd("/Users/nov017/R-projects/dbpm") # local 
+
 
 rm(list=ls())
 
@@ -76,6 +78,14 @@ load(list.files(path=paste("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/", cur
 curr_scen <- "historical"
 input_loc <- paste("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/", curr_esm, "/", curr_scen, "/", sep = "")
 output_loc <- paste("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/", curr_esm, "/", curr_scen, "/", sep = "") 
+
+# or in local - where processed_forcing = private in gem48
+curr_esm <- "GFDL-ESM4"
+load(list.files(path=paste("/Users/nov017/Dropbox/DBPM_fishing_extension/private/fishmip_inputs/ISIMIP3b/", curr_esm, '/',  sep = ""), pattern = "*depth*", full.names = TRUE)) 
+curr_scen <- "historical"
+input_loc <- paste("/Users/nov017/Dropbox/DBPM_fishing_extension/private/fishmip_inputs/ISIMIP3b/", curr_esm, "/", curr_scen, "/", sep = "")
+output_loc <- paste("/Users/nov017/Dropbox/DBPM_fishing_extension/private/fishmip_outputs/ISIMIP3b/", curr_esm, "/", curr_scen, "/", sep = "")
+
 numcores= 25 
 cl <- makeForkCluster(getOption("cl.cores", numcores))
 grids<-1
@@ -117,6 +127,3 @@ print((proc.time()-ptm)/60.0)
 
 
 stopCluster(cl)
-
-
-
