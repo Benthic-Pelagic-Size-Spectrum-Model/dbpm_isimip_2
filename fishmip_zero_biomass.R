@@ -10,15 +10,16 @@ findzeros <- function(filename, path = "./") {
 
 
 #test files
-#outputfiles_path <- "/rd/gem/private/justtest_fishmip_ouputs"
+# outputfiles_path <- "/rd/gem/private/justtest_fishmip_ouputs"
+outputfiles_path <- "/rd/gem/private/fishmip_outputs/ISIMIP3b/GFDL-ESM4/picontrol" # CN 
 
 #rcp run
-outputfiles_path <- "/rd/gem/private/fishmip_outputs/aug_2017/rcp45/"
+#outputfiles_path <- "/rd/gem/private/fishmip_outputs/aug_2017/rcp45/"
 
 #retrieve filenames in a vector
 vec_filenames <-  unlist(
   list.files(path = outputfiles_path, 
-             pattern = "RData$",
+             pattern = "rds$", # changed from RData
              full.names = FALSE)
 )
 
@@ -42,6 +43,18 @@ df_new_files$zeros <- sapply(df_new_files[,1]
                              ,findzeros
                              ,path=outputfiles_path
           )
+
+# Cn trial one file 
+# getwd()
+#setwd("/rd/gem/private/fishmip_outputs/ISIMIP3b/GFDL-ESM4/picontrol")
+#ls()
+#load("dbpm_output_all_10863_picontrol.rds")
+#any(agg$TotalUbiomass[start_of_history:end_of_history] == 0)
+  
+
+
+
+
 
 df_new_files$gridid <- as.numeric(gsub("(res_mts_agg_igrid_|_ipsl-cm5a-lr_rcp45.RData)", "", df_new_files[,1]))
 

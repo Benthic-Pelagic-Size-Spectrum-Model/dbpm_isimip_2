@@ -12,6 +12,17 @@ rungridsep <- function(igrid
                        ,input_files_location
                        ,output_files_location) {
   
+  # CN trial 
+  # where is igrid specified? in the loop that calls this function 
+  igrid <-3
+  # readRDS("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/GFDL-ESM4/historical/grid_1_GFDL-ESM4_historical.rds") # try reading file 
+  gcm = "GFDL-ESM4" 
+  protocol = "historical"
+  output = "aggregated"
+  input_files_location = input_loc 
+  output_files_location = output_loc
+  
+  
   # we need to run the model with time-varying inputs   
   # the largest dt of the model is a monthly time step (Q-F was daily...which may still be needed) 
   # once we have all of the inputs, we need to set the model up on an appropriate time step. 
@@ -22,12 +33,29 @@ rungridsep <- function(igrid
   
   # ptm=proc.time()
   # options(warn=-1)
-    curr_grid_input <- list.files(path = paste(input_files_location, protocol, sep = ""), pattern = paste(protocol, "_", igrid, "_" , gcm, ".rds", sep = ""), full.names = TRUE)
-    curr_grid_output <- list.files(path = paste(output_files_location, protocol, sep = ""), pattern = paste("dbpm_output_all_", igrid, '_', protocol, '.rds', sep = ""), full.names = TRUE)
-
-    if(length(curr_grid_input) > 0 & length(curr_grid_output) == 0){ # If current grid has not been run, and inputs exist for it
-    inputs <- readRDS(curr_grid_input)
+  
+  ## CN it's not reading inputs in change directories 
+  curr_grid_input <- list.files(path = input_files_location, pattern = paste("grid", "_", igrid, "_" , gcm, "_",  protocol, ".rds", sep = ""), full.names = TRUE)
+  curr_grid_output <- list.files(path = output_files_location, pattern = paste("dbpm_output_all_", igrid, '_', protocol, '.rds', sep = ""), full.names = TRUE)
+  
+  ## CN trial 2 
+  # curr_grid_input <- paste(input_files_location, "grid", "_", igrid, "_" , gcm, "_",  protocol, ".rds", sep = "")
+  # curr_grid_output <- list.files(path = output_files_location, pattern = paste("dbpm_output_all_", igrid, '_', protocol, '.rds', sep = ""), full.names = TRUE)
+  
+  # original are the following 2 lines 
+    # curr_grid_input <- list.files(path = paste(input_files_location, protocol, sep = ""), pattern = paste(protocol, "_", igrid, "_" , gcm, ".rds", sep = ""), full.names = TRUE)
+    # curr_grid_output <- list.files(path = paste(output_files_location, protocol, sep = ""), pattern = paste("dbpm_output_all_", igrid, '_', protocol, '.rds', sep = ""), full.names = TRUE)
     
+    if(length(curr_grid_input) > 0 & length(curr_grid_output) == 0){ # If current grid has not been run, and inputs exist for it
+    
+    #  CN  it's not reading inputs in. add path 
+    # inputs <- readRDS(paste(input_files_location, curr_grid_input, sep=""))
+    inputs <- readRDS(curr_grid_input) # this is the original 
+    
+    # CN try with  one grid
+    #inputs<-readRDS("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/GFDL-ESM4/picontrol/grid_108_GFDL-ESM4_picontrol.rds")
+    
+    # NOTE CN: may need to delete 59 to 73 if you are running yearly.
     ## Extract single input for each year (first week of each year), then fill all other inputs as NA's
     num_years <- ceiling(dim(inputs$ts)[1]/48)
     tss <- as.matrix(inputs$ts)
@@ -90,7 +118,7 @@ rungridsep <- function(igrid
   
   result_set$notrun <- ifelse(any(result_set$U[150,]=="NaN")==FALSE, FALSE, TRUE)
 
-  isave <- seq(from=300*48, to=((dim(inputs$ts)[1])+1), by = 48)
+  isave <- seq(from=300*48, to=((dim(inputs$ts)[1])+1), by = 48) #  CN NOTE: to run monthly chage the 48 to 4 (as in week in one month)
   
  # a <- Sys.time()
   ## CHECK IF MODEL HAS CRASHED, IF IT HAS, 10X MORE STEPS AND RUN AGAIN
@@ -348,15 +376,31 @@ rungridsep <- function(igrid
       # convert all biomasses  and catches from g C or g WW per m^3 to per m^2   
       agg[,1:13] <- agg[,1:13] * min(agg$depth,100)
       
+      # CN new location 
+      output_filename <- paste(output_files_location, "dbpm_output_all_", igrid, '_', protocol, '.rds', sep = "") 
+      # output_filename <- paste(output_files_location, protocol, "/", "dbpm_output_all_", igrid, '_', protocol, '.rds', sep = "") 
+      saveRDS(agg, file=output_filename, compress=FALSE)
       
-      output_filename <- paste(output_files_location, protocol, "/", "dbpm_output_all_", igrid, '_', protocol, '.rds', sep = "") 
-      saveRDS(agg, file=output_filename, compress = FALSE)
+      # CN trial - not working when saving the whole file, but working when saving just a part of it... 
+      # same below when data is not aggregated. 
+      readRDS(output_filename)
+      load(output_filename)
+      getwd()
+      list.files()
+      saveRDS(agg[1:26,], file=output_filename, compress = FALSE) # this is the limit - it won't save anything bigger.... 
+      object.size(agg[1:26,])
+      object.size(agg)
+      readRDS(output_filename)
+      file.info(output_filename)$size
+      
     }
     
-    
     if (output!="aggregated") {
-      output_filename <-paste(output_files_location, protocol, "/", "dbpm_output_all_", igrid, '_', protocol, '.rds', sep = "") 
+      # CN  new location
+      output_filename <- paste(output_files_location, "dbpm_output_all_", igrid, '_', protocol, '.rds', sep = "") 
+      # output_filename <-paste(output_files_location, protocol, "/", "dbpm_output_all_", igrid, '_', protocol, '.rds', sep = "") 
       saveRDS(result_set, file = output_filename, compress = FALSE)
+      
     }
     
   }
@@ -377,7 +421,11 @@ rungridsep <- function(igrid
     
     agg$depth <- rep(params$depth,each=length(agg[,1]))
     
-    output_filename <- paste(output_files_location, protocol, "/", "dbpm_output_all_", igrid, '_', protocol, '.rds', sep = "") 
+    
+    # CN new location 
+    output_filename <- paste(output_files_location, "dbpm_output_all_", igrid, '_', protocol, '.rds', sep = "") 
+    # output_filename <- paste(output_files_location, protocol, "/", "dbpm_output_all_", igrid, '_', protocol, '.rds', sep = "") 
+    
     saveRDS(agg, file=output_filename, compress = FALSE)
     
     rm(TotalUbiomass,Ubiomass10plus,Ubiomass270plus,TotalUcatch,Ucatch10plus,Ucatch270plus,TotalVbiomass,Vbiomass10plus,Vbiomass270plus,TotalVcatch,Vcatch10plus,Vcatch270plus, TotalW)
