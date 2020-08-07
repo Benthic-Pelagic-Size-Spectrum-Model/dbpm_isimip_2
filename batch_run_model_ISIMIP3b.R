@@ -80,6 +80,7 @@ input_loc <- paste("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/", curr_esm, "
 output_loc <- paste("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/", curr_esm, "/", curr_scen, "/", sep = "") 
 
 # or in local - where processed_forcing = private in gem48
+# NOTE - the  input file  in private/.../historical is a random gridcell file taht Ryan  send you a while ago to test the model (pi_26_cesm.rds) just renamed.  
 curr_esm <- "GFDL-ESM4"
 load(list.files(path=paste("/Users/nov017/Dropbox/DBPM_fishing_extension/private/fishmip_inputs/ISIMIP3b/", curr_esm, '/',  sep = ""), pattern = "*depth*", full.names = TRUE)) 
 curr_scen <- "historical"
