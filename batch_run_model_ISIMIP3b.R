@@ -6,6 +6,7 @@
 
 #### STEP 3: RUN THE MODEL
 # source("./DBPM/") # Set to the base folder for the DBPM runs
+setwd("/data/home/camillan/dbpm")
 
 rm(list=ls())
 
@@ -27,9 +28,10 @@ source('runmodel_yearly.R') # Load script to run model (YEARLY SCRIPT, CHANGE ) 
 # source("runmodel.R") # CN this is set up to run the model adn save the results in the right directories - the _yearly version is Ryan's version and needs to be updated with new directories 
 # NOTE - code not working now - you still need to change directories as per Ryan code as inputs now are in folders (historical etc...)
 
+
 for(i in 1:length(esms)){ # Loop over esms
   
-  # CN try only 1 model adn 1 scenario first 
+  # CN try only 1 model and 1 scenario first 
   i = 1
   curr_esm <- esms[i]
   
@@ -42,7 +44,9 @@ for(i in 1:length(esms)){ # Loop over esms
     curr_scen <- scenario[j]
     
     input_loc <- paste("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/", curr_esm, "/", curr_scen, "/", sep = "")
+    # list.files(input_loc)
     output_loc <- paste("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/", curr_esm, "/", curr_scen, "/", sep = "") 
+    # list.files(output_loc)
     
     # set up cluster
     numcores= 25 
@@ -56,17 +60,32 @@ for(i in 1:length(esms)){ # Loop over esms
     ptm=proc.time()
     options(warn=-1)
     
-    parallel::clusterApply(cl,x=grids,fun=rungridsep, gcm = curr_esm, protocol = curr_scen, output = "aggregates",
+    parallel::clusterApply(cl,x=grids,fun=rungridsep, gcm = curr_esm, protocol = curr_scen, output = "Not_aggregated",  
                            input_files_location = input_loc, output_files_location = output_loc)
     
     print((proc.time()-ptm)/60.0)
     
-  stopCluster(cl)
+    stopCluster(cl)
   }
 }
 
-
-
+# figure out why you got empty output files when running the picontrol scenario!! 
+# try 1 model, 1 scenario, 1 grid cell first - CN - do this with historical as picontrol already has outputs
+curr_esm <- "GFDL-ESM4"
+load(list.files(path=paste("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/", curr_esm, '/',  sep = ""), pattern = "*depth*", full.names = TRUE)) # Load esm depth file
+curr_scen <- "historical"
+input_loc <- paste("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/", curr_esm, "/", curr_scen, "/", sep = "")
+output_loc <- paste("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/", curr_esm, "/", curr_scen, "/", sep = "") 
+numcores= 25 
+cl <- makeForkCluster(getOption("cl.cores", numcores))
+grids<-1
+ptm=proc.time()
+options(warn=-1)
+# as a first trial, run it inside the function rungridsep in runmodel_yearly.r instead 
+parallel::clusterApply(cl,x=grids,fun=rungridsep, gcm = curr_esm, protocol = curr_scen, output = "aggregated",  
+                       input_files_location = input_loc, output_files_location = output_loc)
+print((proc.time()-ptm)/60.0)
+stopCluster(cl)
 
 
 # Running the model
@@ -95,7 +114,9 @@ parallel::clusterApply(cl,x=grids,fun=rungridsep, gcm = curr_gcm, protocol = pro
 
 print((proc.time()-ptm)/60.0)
 
-}
 
 
 stopCluster(cl)
+
+
+
