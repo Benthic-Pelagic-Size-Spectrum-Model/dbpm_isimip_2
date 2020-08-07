@@ -80,4 +80,11 @@ for(i in 1:length(esms)){
 #user    system   elapsed 
 #1.668067  1.440400 88.715533 
 
+# check there is data:  
+getwd()
+setwd("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/GFDL-ESM4/picontrol")
+getwd()
+list.files()
+a<-readRDS("grid_108_GFDL-ESM4_picontrol.rds")
+head(a)
 
