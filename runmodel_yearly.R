@@ -14,13 +14,13 @@ rungridsep <- function(igrid
   
   # CN trial 
   # where is igrid specified? in the loop that calls this function 
-  igrid <-1
+  # igrid <-1
   # readRDS("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/GFDL-ESM4/historical/grid_1_GFDL-ESM4_historical.rds") # try reading file 
-  gcm = "GFDL-ESM4" 
-  protocol = "historical"
-  output = "not-aggregated"
-  input_files_location = input_loc 
-  output_files_location = output_loc
+  # gcm = curr_esm 
+  # protocol = curr_scen
+  # output = "partial"
+  # input_files_location = input_loc 
+  # output_files_location = output_loc
   
   
   # we need to run the model with time-varying inputs   
@@ -308,33 +308,45 @@ rungridsep <- function(igrid
     
     if (output=="aggregated") {
       
-      
-      #sum biomass (need to convert to g ww per m^3, across size classes) 
+      # sum biomass (need to convert to g ww per m^3, across size classes) 
       
       # then need to convert to g C per m^2 (multiply by depth at end)
       
       # conversion used is:  0.0352 g C = 1 g wet weight
       
-      #total biomass in functional groups
+      # total biomass in functional groups
       
-      TotalUbiomass <- 0.0352*apply(result_set$U[params$ref:params$Nx,isave]*params$dx*10^params$x[params$ref:params$Nx],2,sum) 
-      TotalVbiomass <- 0.0352*apply(result_set$V[params$ref.det:params$Nx,isave]*params$dx*10^params$x[params$ref.det:params$Nx],2,sum) 
-      TotalW <- 0.0352*result_set$W[isave]
+      # TotalUbiomass <- 0.0352*apply(result_set$U[params$ref:params$Nx,isave]*params$dx*10^params$x[params$ref:params$Nx],2,sum) 
+      # TotalVbiomass <- 0.0352*apply(result_set$V[params$ref.det:params$Nx,isave]*params$dx*10^params$x[params$ref.det:params$Nx],2,sum) 
+      # TotalW <- 0.0352*result_set$W[isave]
       
+      # CN new aggregation for isimip3b outputs 
+      # Total biomass densities across weight bins
+      TotalUbiomass <- apply(result_set$U[params$ref:params$Nx,isave]*params$dx*10^params$x[params$ref:params$Nx],2,sum) 
+      TotalVbiomass <- apply(result_set$V[params$ref.det:params$Nx,isave]*params$dx*10^params$x[params$ref.det:params$Nx],2,sum) 
+      TotalW <- result_set$W[isave]
+      consumer_spec <- result_set$U[params$ref:params$Nx,isave] + result_set$V[params$ref.det:params$Nx,isave]
       
       # Biomass in functional groups and size classes - these weight classes correspond to 10, 30 , 46 and 100 cm thresholds (e.g. biomass in these sizes and up)
       
-      wcut <- c(10, 270, 1000, 10000)
+      # wcut <- c(10, 270, 1000, 10000)
+      
+      # CN new aggregation for isimip3b outputs for totals consumer biomass density in log10 weight bins
+      # CN  need to work this out better - e.g. transfor into dataset, use dplyr to group into size classes 
+      # 2 grouping by size classes required: wcut <- c(1, 10, 100, 1000, 10000, 100000) and wcut <- c(0.01*30^3, 0.01*90^3)
+      # the second grouping is based on size classes <30 cm between 30 adn 90 and above 90, using lenght weight conversions as per Julia 
+      wcut <- c(1, 10, 100, 1000, 10000, 100000)
       
       xcutref <- wcut
       
       for (i in 1:length(wcut)) xcutref[i] = (min(which(params$x >=log10(wcut[i]))))
       
-      Ubiomass10plus <- 0.0352*apply(result_set$U[xcutref[1]:params$Nx,isave]*params$dx*10^params$x[xcutref[1]:params$Nx],2,sum) 
-      Ubiomass270plus <- 0.0352*apply(result_set$U[xcutref[2]:params$Nx,isave]*params$dx*10^params$x[xcutref[2]:params$Nx],2,sum) 
+      # CN new aggregation for isimip3b outputs (deleted 0.0352 conversion as per above)
+      Ubiomass10plus <- apply(result_set$U[xcutref[1]:params$Nx,isave]*params$dx*10^params$x[xcutref[1]:params$Nx],2,sum) 
+      Ubiomass270plus <- apply(result_set$U[xcutref[2]:params$Nx,isave]*params$dx*10^params$x[xcutref[2]:params$Nx],2,sum) 
       
-      Vbiomass10plus <- 0.0352*apply(result_set$V[xcutref[1]:params$Nx,isave]*params$dx*10^params$x[xcutref[1]:params$Nx],2,sum) 
-      Vbiomass270plus <- 0.0352*apply(result_set$V[xcutref[2]:params$Nx,isave]*params$dx*10^params$x[xcutref[2]:params$Nx],2,sum) 
+      Vbiomass10plus <- apply(result_set$V[xcutref[1]:params$Nx,isave]*params$dx*10^params$x[xcutref[1]:params$Nx],2,sum) 
+      Vbiomass270plus <- apply(result_set$V[xcutref[2]:params$Nx,isave]*params$dx*10^params$x[xcutref[2]:params$Nx],2,sum) 
       
       #total catches in functional groups
       
@@ -376,29 +388,88 @@ rungridsep <- function(igrid
       # convert all biomasses  and catches from g C or g WW per m^3 to per m^2   
       agg[,1:13] <- agg[,1:13] * min(agg$depth,100)
       
+      # object.size(agg)
+      
       # CN new location 
       output_filename <- paste(output_files_location, "dbpm_output_all_", igrid, '_', protocol, '.rds', sep = "") 
       # output_filename <- paste(output_files_location, protocol, "/", "dbpm_output_all_", igrid, '_', protocol, '.rds', sep = "") 
       saveRDS(agg, file=output_filename, compress=FALSE)
       
-      # CN trial - not working when saving the whole file, but working when saving just a part of it... 
-      # same below when data is not aggregated. 
-      dim(agg)
-      readRDS(output_filename)
-      load(output_filename)
-      getwd()
-      list.files()
-      saveRDS(agg[1:26,], file=output_filename, compress = FALSE) # this is the limit - it won't save anything bigger.... 
-      object.size(agg[1:26,])
-      object.size(agg)
-      readRDS(output_filename)
-      file.info(output_filename)$size
+    }
+    
+    #  CN using a third category where you  save disaggreageted outputs but only biomass, and growth 
+    if (output == "partial") {
+    
+      # start.time <- Sys.time()
+      # either save this 
+      result_partial<-list(U = result_set$U, # size class X time - biomass matrix 
+                            V = result_set$V, 
+                            GGU = result_set$GG.u,
+                            GGV = result_set$GG.v, 
+                            W = result_set$W, # time - biomass vector 
+                            x = result_set$params$x, # size class in log10 vector 
+                            lat = result_set$params$lat, # single values 
+                            lon = result_set$params$lon,
+                            depth = result_set$params$depth, 
+                            dx = result_set$params$dx) 
+      
+      # object.size(result_partial)
+      # file.info(output_filename)
+      
+      # or a rearranging of it ... but very time consuming
+      # library(dplyr)
+      # library(tidyr)
+      
+      # addBin<-result_set$params$x # rows
+      # addCol<-c(seq(1, ncol(result_set$U)),"bin")
+      
+      # result_partial <-as_data_frame(result_set$U)
+      # result_partial$bin <-addBin
+      # colnames(result_partial)<-addCol
+      
+      # the is the slop part  
+      # result_partial<- result_partial %>% 
+        # gather(step, bioU, -bin)
+      
+      # add other values 
+      # add <- as_data_frame(result_set$V) %>% 
+        #gather(step,bioV)
+      #add2 <- as_data_frame(result_set$GG.u) %>% 
+       # gather(step,growthU)
+      #add3 <- as_data_frame(result_set$GG.v) %>% 
+        #gather(step,growthV)
+      
+      #result_partial$bioV<-add$bioV
+      #result_partial$growthU<-add2$growthU
+      #result_partial$growthV<-add3$growthV
+      
+      #result_partial<-list(df = result_partial, # df of biomass and growth for U and V in size classes of log10 bin
+       #                    W = result_set$W, # time - biomass vector 
+      #                   lat = result_set$params$lat, # single values 
+       #                    lon = result_set$params$lon,
+        #                   depth = result_set$params$depth, 
+         #                  dx = result_set$params$dx)
+      
+      # object.size(result_partial) # slightly bigger
+      
+      # save 
+      output_filename <- paste(output_files_location, "dbpm_output_all_", igrid, '_', protocol, '.rds', sep = "") 
+      saveRDS(result_partial, file = output_filename, compress = FALSE)
+      
+      # readRDS(output_filename)
+      # readRDS("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/IPSL-CM6A-LR/historical/dbpm_output_all_1_historical.rds")
+
+      # end.time <- Sys.time()
+      # time.taken <- end.time - start.time
+      # time.taken
       
     }
     
-    if (output!="aggregated") {
+    
+    if (output=="not_aggregated") {
+      
       # CN  new location
-      output_filename <- paste(output_files_location, "dbpm_output_all_", igrid, '_', protocol, '.rds', sep = "") 
+      output_filename <- paste(output_files_location, "trial", igrid, '_', protocol, '.rds', sep = "") 
       # output_filename <-paste(output_files_location, protocol, "/", "dbpm_output_all_", igrid, '_', protocol, '.rds', sep = "") 
       saveRDS(result_set, file = output_filename, compress = FALSE)
       # readRDS(output_filename)
