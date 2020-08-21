@@ -67,7 +67,7 @@ for(i in 1:length(esms)){ # Loop over esms
     # length(1:dim(depth)[1]) #  41000 grids 
     
     # CN subsets of runs 
-    grids<-501:5500 # 5000 grids should take ~12h (if 500 take 72 min i.e. 1.2 h) 
+    grids<-30502:dim(depth)[1] # 5000 grids should take ~12h (if 500 take 72 min i.e. 1.2 h) 
     
     # Running the model
     # CN other time cacualtion 
@@ -100,12 +100,12 @@ output_loc <- paste("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/", curr_esm,
 # go in runmodel_yearly.r and run from there 
 
 # check outputs - grid 1 has been run manually and the file loads
-result_set<-readRDS("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/IPSL-CM6A-LR/historical/dbpm_output_all_5500_historical.rds")
+result_set<-readRDS("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/IPSL-CM6A-LR/historical/dbpm_output_all_41328_historical.rds")
 ls(result_set)
 
 # other  run - picontrol for gfdl - about 4600 grid calle 1.3 T 
-result_set<-readRDS("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/GFDL-ESM4/picontrol/dbpm_output_all_4600_picontrol.rds")
-ls(result_set)
+# result_set<-readRDS("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/GFDL-ESM4/picontrol/dbpm_output_all_4600_picontrol.rds")
+# ls(result_set)
 
 # plot spectrum 
 # getAnywhere(plotsizespectrum()) # we don't have param saved into the partial one 
