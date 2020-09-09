@@ -3,7 +3,6 @@
 # it calls runmodel_yearly.R (or runmodel.R, depending on whether you need to run yearly or monthly). NOTE: You might need to load these files from Ryan's folder too. 
 # in Julia's older version, this codes is included in runmodel_calls.r but it's very different!
 
-
 #### STEP 3: RUN THE MODEL
 # source("./DBPM/") # Set to the base folder for the DBPM runs
 setwd("/data/home/camillan/dbpm")
@@ -19,15 +18,7 @@ library(parallel)
 esms <- c("GFDL-ESM4", "IPSL-CM6A-LR")
 scenario <- c("picontrol", "historical", "ssp126", "ssp585")
 
-# Don't think you need these commands, but I had them in prior script
-temp.effect = T
-eps = 1e-5
-ERSEM.det.input = F
-# list.files()
-
-source('runmodel_yearly.R') # Load script to run model (YEARLY SCRIPT, CHANGE ) # CN to run this you need to change directories - discuss this with Julia and Ryan 
-# source("runmodel.R") # CN this is set up to run the model adn save the results in the right directories - the _yearly version is Ryan's version and needs to be updated with new directories 
-# NOTE - code not working now - you still need to change directories as per Ryan code as inputs now are in folders (historical etc...)
+source('runmodel_yearly.R') 
 
 # igrid <-1
 # readRDS("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/GFDL-ESM4/historical/grid_1_GFDL-ESM4_historical.rds") # try reading file 
@@ -37,41 +28,34 @@ source('runmodel_yearly.R') # Load script to run model (YEARLY SCRIPT, CHANGE ) 
 # input_files_location = input_loc 
 # output_files_location = output_loc
 
-
-for(i in 1:length(esms)){ # Loop over esms
+### protocols requiring spin up ----
+# for(i in 1:length(esms)){ # Loop over esms
   
-  # CN try only 1 model and 1 scenario first 
-  i = 2
+  # i = 2
   curr_esm <- esms[i]
   
   load(list.files(path=paste("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/", curr_esm, '/',  sep = ""), pattern = "*depth*", full.names = TRUE)) # Load esm depth file
   
-  for(j in 1:length(scenario)){ # Loop over scenario
-    # CN try only 1 model adn 1 scenario first 
-    j = 2
+  # for(j in 1:length(scenario)){ # Loop over scenario
+  
+    # historical saved weekly outputs + spin up = 4.9T, 4 days to run (but on 25 cores)
+    # picontrol saved montly outputs = 340G, 2.5 days to run on 45 cores  
+  
+    # j = 1
     
     curr_scen <- scenario[j]
     
     input_loc <- paste("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/", curr_esm, "/", curr_scen, "/", sep = "")
-    # list.files(input_loc)
     output_loc <- paste("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/", curr_esm, "/", curr_scen, "/", sep = "") 
-    # list.files(output_loc)
     
     # set up cluster
-    numcores= 25 
+    numcores= 45 # gem48 has 48 cpu 
     
     cl <- makeForkCluster(getOption("cl.cores", numcores))
     
     # grids to read in are sequential for the depth file
     grids<-1:dim(depth)[1]
-    # length(1:dim(depth)[1]) #  41000 grids 
-    
-    # CN subsets of runs 
-    grids<-30502:dim(depth)[1] # 5000 grids should take ~12h (if 500 take 72 min i.e. 1.2 h) 
-    
-    # Running the model
-    # CN other time cacualtion 
-    # start.time <- Sys.time()
+
     ptm=proc.time()
     options(warn=-1)
     
@@ -80,82 +64,154 @@ for(i in 1:length(esms)){ # Loop over esms
     
     print((proc.time()-ptm)/60.0)
     
-    # CN other time calcualtion 
-    # end.time <- Sys.time()
-    # time.taken <- end.time - start.time
-    # time.taken
+    stopCluster(cl)
+#  }
+#}
     
+### projections protocols ssp ----
+    
+for(i in 1:length(esms)){ # Loop over esms
+  
+  i = 2 # ipsl 
+  curr_esm <- esms[i]
+  
+  load(list.files(path=paste("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/", curr_esm, '/',  sep = ""), pattern = "*depth*", full.names = TRUE)) # Load esm depth file
+  
+  for(j in 3:length(scenario)){ # Loop over scenario
+    
+    # ssp126 saved weekly outputs starting from last historical week = 17 h to run; 117G RERUNNING NOW 
+    # ssp585 saved weekly outputs starting from last historical week = RUNNING NOW 
+    # j = 4 
+    
+    curr_scen <- scenario[j]
+    
+    input_loc <- paste("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/", curr_esm, "/", curr_scen,"/", sep = "")
+    output_loc <- paste("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/", curr_esm, "/", curr_scen,"/", sep = "")
+    output_loc_hist <- paste("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/", curr_esm, '/historical', sep = "")
+    input_loc_hist <- paste("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/", curr_esm, '/historical', sep = "")
+    
+    # set up cluster
+    numcores= 45 # 48 cpu 
+    
+    cl <- makeForkCluster(getOption("cl.cores", numcores))
+    
+    # grids to read in are sequential for the depth file
+    grids<-1:dim(depth)[1]
+    grids<-grids[grids!=21747] # this is the only grid from the historical run with greater size dimentions, meaning that result_set$notrun == TRUE
+    # see why this grid could be problematic below 'check time dimention of outputs in historical'
+    
+    ptm=proc.time()
+    options(warn=-1)
+    
+    parallel::clusterApply(cl,x=grids,fun=rungridsep_ssp, gcm = curr_esm, protocol = curr_scen, output = "partial",  
+                           input_files_location = input_loc, output_files_location = output_loc, 
+                           input_historical_location = input_loc_hist, output_historical_location = output_loc_hist)
+    
+    print((proc.time()-ptm)/60.0)
+  
     stopCluster(cl)
   }
 }
 
-# figure out why you got empty output files when running the picontrol scenario!! 
-# try 1 model, 1 scenario, 1 grid cell first - CN - do this with historical as picontrol already has outputs
+### try 1 model, 1 scenario, 1 grid cell first ----
 curr_esm <- esms[2]
 load(list.files(path=paste("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/", curr_esm, '/',  sep = ""), pattern = "*depth*", full.names = TRUE)) # Load esm depth file
 curr_scen <- scenario[2]
 input_loc <- paste("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/", curr_esm, "/", curr_scen, "/", sep = "")
 output_loc <- paste("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/", curr_esm, "/", curr_scen, "/", sep = "") 
-
 # go in runmodel_yearly.r and run from there 
+    
+### explore historical and picontrol inputs and consideration for spin up ----
+inputs_h <- readRDS("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/IPSL-CM6A-LR/historical/grid_1_IPSL-CM6A-LR_historical.rds")
+inputs_h<-inputs_h$ts 
+inputs_p <- readRDS("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/IPSL-CM6A-LR/picontrol/grid_1_IPSL-CM6A-LR_picontrol.rds")
+inputs_p<-inputs_p$ts
 
-# check outputs - grid 1 has been run manually and the file loads
-result_set<-readRDS("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/IPSL-CM6A-LR/historical/dbpm_output_all_41328_historical.rds")
-ls(result_set)
+head(inputs_h)
+head(inputs_p)
+    
+### explore inputs/outputs and time steps difference ---- 
+inputs_h <- readRDS("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/IPSL-CM6A-LR/picontrol/grid_1_IPSL-CM6A-LR_picontrol.rds")
+inputs_h<-inputs_h$ts 
+dim(inputs_h)[1] # time dimention
+7917/48 # historical 164.93 year meaning that 3 weeks are left out of 165 years (7920/48 = 165)
+12045/48 # picontrol 250.9375 year meaning that 3 weeks are left out of 251 years (12048/48 = 251)
+12045/4 # picontrol 3011.25 months (as I save monthy...) - 3 weeks are left out of 3012 months
+result_set<-readRDS("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/IPSL-CM6A-LR/picontrol/dbpm_output_all_1_picontrol.rds")
+output_h<-result_set$U
+dim(output_h)[2] # time dimention
+22318 - (300*48) # leave spin up out - one time step more than inputs  
+3012 # picontrol saved months (spin up already left out) - here it's OK becasue when I save monthly I save the 1st week of each month (the 0.25 above becomes output for the last month)
 
-# other  run - picontrol for gfdl - about 4600 grid calle 1.3 T 
-# result_set<-readRDS("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/GFDL-ESM4/picontrol/dbpm_output_all_4600_picontrol.rds")
-# ls(result_set)
+### check time dimention of outputs in historical ----
+# find grids for which result_set$notrun == TRUE in historical run, hence with problems when calculting initila abundance for ssp runs (last step of historical) and with problems with isave when creating output variables 
+ptm=proc.time()
+options(warn=-1)
+for (igrid in 1:10){ # 41328 cell takes 7 h to run. 
+  curr_grid_output <- list.files(path = "/../../rd/gem/private/fishmip_outputs/ISIMIP3b/IPSL-CM6A-LR/historical/", pattern = paste("dbpm_output_all_", igrid, '_', "historical", '.rds', sep = ""), full.names = TRUE)
+  result_set<-readRDS(curr_grid_output)
+  output_h<-result_set$U
+  # if (dim(output_h)[2] != 22318) {print(paste(igrid, dim(output_h)[2]))} # time dimention # 22318 is the OK one, if bigger it means result_ser$notrun = TRUE
+  print(paste(igrid, dim(output_h)[2]))
+  rm(result_set, output_h)
+}
+print((proc.time()-ptm)/60.0)
+# other option: in terminal find files bigger than 124M (the size of a file with time dimention 22318): find . type- f -size +124M
+# ./dbpm_output_all_21747_historical.rds is the only one with larger size 223162 (result_set$notrun = T, option 1)
+# igrid = 21747
+# to find smaller find . type- f -size -124M
 
-# plot spectrum 
-# getAnywhere(plotsizespectrum()) # we don't have param saved into the partial one 
+#### plots ----
 library(dplyr)
 library(tidyr)
+library(ggplot2)
+
+result_set<-readRDS("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/IPSL-CM6A-LR/ssp585/dbpm_output_all_4000_ssp585.rds") 
+result_set_h<-readRDS("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/IPSL-CM6A-LR/historical/dbpm_output_all_4000_historical.rds") 
+
+sum(result_set_h$V[,22317]) # this should be the starting abundance for the ssp126 run 
+sum(result_set$V[,1]) # this should be the second time step in V (the first being the the abundance above, but not saved)
+
+sum(result_set_h$U[,22317])
+sum(result_set$U[,1])
 
 addBin<-result_set$x # rows
 addCol<-c(seq(1, ncol(result_set$U)),"bin")
 
-result_partial <-as_data_frame(result_set$U)
+result_partial <- as_data_frame(result_set$U)
 result_partial$bin <-addBin
 colnames(result_partial)<-addCol
 
 # the is the slop part  
 result_partial<- result_partial %>% 
   gather(step, bioU, -bin)
-# add other values 
 add <- as_data_frame(result_set$V) %>% 
   gather(step,bioV)
 add2 <- as_data_frame(result_set$GGU) %>% 
   gather(step,growthU)
 add3 <- as_data_frame(result_set$GGV) %>% 
   gather(step,growthV)
+# add4 <- as_data_frame(result_set$W) # this has no size bins and cannot be plotted in the same way  
 
-add4 <- as_data_frame(result_set$W) # this has a differnt format.... no size bins... 
- 
 result_partial$bioV<-add$bioV
 result_partial$growthU<-add2$growthU
 result_partial$growthV<-add3$growthV
-
-head(result_partial)
+length(unique(result_partial$step)) # time dimention of historical outputs 
 
 result_partial<-result_partial %>% 
   gather(trait, bio, -c(bin, step) )
 
-head(result_partial)
 length(unique(result_partial$step))
-filter(result_partial, step == 22318) # there are NAs is bio for some grids 
+filter(result_partial, step == length(unique(result_partial$step))-1)
 
-# transformation values 
-
-ss<-filter(result_partial, trait %in% c("bioU", "bioV"))
-head(ss)
-library(ggplot2)
-ggplot(filter(ss, step == 22317, bio>0), aes(x=bin, y=log10(bio), group = trait, color = trait))+
+# spectrum 
+ss<-filter(result_partial, bio>0, trait %in% c("bioU", "bioV"))
+ggplot(filter(ss, step == length(unique(result_partial$step))-1), 
+       aes(x=bin, y=log10(bio), group = trait, color = trait))+
   geom_line()
 
-unique(result_partial$bin)
-head(result_partial)
-gw<-filter(result_partial, trait %in% c("bioU","bioV"), bio>0) %>% 
+# biomass in time 
+gw<-filter(result_partial, trait %in% c("bioU","bioV")) %>% 
   mutate(step = as.numeric(step)) %>% 
   group_by(trait, step) %>% 
   dplyr::summarise(bio = sum(bio))
@@ -164,58 +220,24 @@ ggplot(gw, aes(x=step, y=bio, group = trait, color = trait))+
   geom_line()+
   facet_wrap(~trait, scale = "free_y")
 
-yr<-seq(max(gw$step)-5,max(gw$step))
-filter(gw, step %in% yr)
-
-
-# or in local - where processed_forcing = private in gem48
-# NOTE - the  input file  in private/.../historical is a random gridcell file taht Ryan  send you a while ago to test the model (pi_26_cesm.rds) just renamed.  
+#### run model local ----
+# where processed_forcing = private in gem48
+# NOTE: input file in private/.../historical = random gridcell file that Ryan send you a while ago to test the model (pi_26_cesm.rds) just renamed.  
 curr_esm <- "GFDL-ESM4"
 load(list.files(path=paste("/Users/nov017/Dropbox/DBPM_fishing_extension/private/fishmip_inputs/ISIMIP3b/", curr_esm, '/',  sep = ""), pattern = "*depth*", full.names = TRUE)) 
 curr_scen <- "historical"
 input_loc <- paste("/Users/nov017/Dropbox/DBPM_fishing_extension/private/fishmip_inputs/ISIMIP3b/", curr_esm, "/", curr_scen, "/", sep = "")
 output_loc <- paste("/Users/nov017/Dropbox/DBPM_fishing_extension/private/fishmip_outputs/ISIMIP3b/", curr_esm, "/", curr_scen, "/", sep = "")
-
+  
 numcores= 25 
 cl <- makeForkCluster(getOption("cl.cores", numcores))
 grids<-1
 ptm=proc.time()
 options(warn=-1)
+
 # as a first trial, run it inside the function rungridsep in runmodel_yearly.r instead 
 parallel::clusterApply(cl,x=grids,fun=rungridsep, gcm = curr_esm, protocol = curr_scen, output = "partial",  
                        input_files_location = input_loc, output_files_location = output_loc)
 print((proc.time()-ptm)/60.0)
 stopCluster(cl)
-
-
-
-
-# Running the model
-ptm=proc.time()
-options(warn=-1)
-  
-prot = prots[i]
-curr_gcm = "cesm"
-input_path = "./Inputs/CESM1-BEC/processed_forcings/"
-output_path = "./Outputs/CESM1-BEC/"
-curr_output = "aggregated"  
-
-protocol =prot
-gcm = curr_gcm
-output = curr_output
-input_files_location = input_path
-output_files_location = output_path
-output = curr_output
-igrid = 23015
-temp.effect = T
-eps = 1e-5
-ERSEM.det.input = F
-
-parallel::clusterApply(cl,x=grids,fun=rungridsep, gcm = curr_gcm, protocol = prot, output = curr_output,
-                       input_files_location = input_path, output_files_location = output_path)
-
-print((proc.time()-ptm)/60.0)
-
-
-
-stopCluster(cl)
+    
