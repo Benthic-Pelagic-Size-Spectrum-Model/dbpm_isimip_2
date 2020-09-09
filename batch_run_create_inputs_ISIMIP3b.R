@@ -26,9 +26,9 @@ for(i in 1:length(esms)){
   # i = 1
   curr_esm <- esms[i]
  
- # load(list.files(path=paste("./processed_forcings/", curr_esm, '/',  sep = ""), pattern = "*depth*", full.names = TRUE)) # Load esm depth file
- load(list.files(path=paste("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/", curr_esm, '/',  sep = ""), pattern = "*depth*", full.names = TRUE)) # Load esm depth file # CN new location on gem48
- # list.files("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/")
+  # load(list.files(path=paste("./processed_forcings/", curr_esm, '/',  sep = ""), pattern = "*depth*", full.names = TRUE)) # Load esm depth file
+  load(list.files(path=paste("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/", curr_esm, '/',  sep = ""), pattern = "*depth*", full.names = TRUE)) # Load esm depth file # CN new location on gem48
+  # list.files("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/")
  
   for(j in 1:length(scenario)){
     
