@@ -165,7 +165,7 @@ sizemodel<-function(params,ERSEM.det.input=F,U_mat,V_mat,W_mat,temp.effect=T,eps
     
     #matrix for recording the two size spectra 
     V = U = array(0, c(length(x), Neq+1))
-    
+
     #vector to hold detrtitus biomass density (g.m-2)
     W = array(0,Neq+1)
     
