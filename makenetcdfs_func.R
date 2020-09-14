@@ -126,6 +126,8 @@ mknetcdf<-function(varname, protocol, inputpath, datapath, savetopath, grids, is
         # CN: what happens if a grid includes NAs as per aggregated data?  
         if("U" %in% names(result_set) == TRUE){
           result_set$U<-result_set$U[,isave]
+          # NOTE !!! need to transform from gm3 to gm2 - see function below - it should be something like: 
+          # result_set$U<-result_set$U*min(inputs$depth$depth,100)
           var[paste(inputs$depth$lon),paste(inputs$depth$lat),,] <- result_set$U # you only need t if you've selected a t range above  
         } else {
           var[paste(inputs$depth$lon),paste(inputs$depth$lat),,] <- NA
@@ -259,19 +261,19 @@ mknetcdf_agg<-function(varname, protocol, inputpath, datapath, savetopath, grids
   
   # # storage for the gridded outputs for current variable 
   # var <- array(NA, dim = c(length(lon), length(lat), length(t)), dimnames = list(lon,lat,t))
-  # CN NOTE!!!!!!! : should this be 1e20 instead?
+  # CN NOTE!!!!!!! : should this be 1e20 instead? 
   var <- array(1e20, dim = c(length(lon), length(lat), length(t)), dimnames = list(lon,lat,t))
   
   # get netcdf names
   # nc_names <- paste(savetopath, protocol, "/dbpm_ipsl_", "agg_",varname, "_global_annual.nc4", sep = "") # /dbpm_cesm1-bgc_nobc_rcp85_nosoc_co2_
-  nc_names <- paste(savetopath, protocol,"/dbpm_ipsl_cm6a_lr_", "nobc_", protocol, "_nosoc_default_",varname, "_global_montly_", yearRange, ".nc4", sep = "") 
-  # according to protocol - need to change year for each protocol 
+  nc_names <- paste(savetopath, protocol,"/dbpm_ipsl_cm6a_lr_", "nobc_", protocol, "_nat_default_",varname, "_global_montly_", yearRange, ".nc4", sep = "") 
+  # according to protocol - need to change year for each protocol in description of netcdf below 
   # bias-adjustment = nobc 
   # soc-scenario = nosoc # CN not sure about this! just using Ryan def (COULD BE 'nat' as in no fishing)
   # sens-scenario = default
   
   # pb = txtProgressBar(min = 0, max = length(grids), initial = 1, style = 3) # Initial progress bar
-  
+
   for (igrid in grids) {
     
     # CN  trial 
@@ -303,10 +305,14 @@ mknetcdf_agg<-function(varname, protocol, inputpath, datapath, savetopath, grids
       for (i in 1:length(wcut)) xcutref[i] = (min(which(other_param$x >=log10(wcut[i]))))
       
       # TOTAL consumer biomass density ,g C m-2, all consumers (trophic level >1, vertebrates and invertebrates)  
-      # CN note this should be g m-2 now as have not been converted in g C - CHECK!
-      # NOTE!!! missing following step (see line 307 and 364 in runmodel_yearly.R):
-      # convert all biomasses from g WW per m^3 to per m^2   
+      # CN note this should be g m-2 now as have not been converted in g C
+      # convert all biomasses from g WW per m^3 to per m^2 (see line 307 and 364 in runmodel_yearly.R):   
       # agg[,1:13] <- agg[,1:13] * min(agg$depth,100)
+      # not sure I understand this (ASK), but according to Ryan code, it is: 
+      TotalUbiomass<-TotalUbiomass*min(inputs$depth$depth,100)
+      TotalVbiomass<-TotalVbiomass*min(inputs$depth$depth,100)
+      # done for below variables as well 
+      
       if (varname=="tcb"){
         var[paste(inputs$depth$lon),paste(inputs$depth$lat),] <- (TotalUbiomass + TotalVbiomass)
       }
@@ -321,16 +327,19 @@ mknetcdf_agg<-function(varname, protocol, inputpath, datapath, savetopath, grids
       
       if (varname=="bp30cm"){ # biomass density of small pelagics <30 cm    
         bp30cm <- apply(result_set$U[1:xcutref[1]-1,isave]*other_param$dx*10^other_param$x[1:xcutref[1]-1],2,sum) # <30
+        bp30cm<-bp30cm*min(inputs$depth$depth,100)
         var[paste(inputs$depth$lon),paste(inputs$depth$lat),] <- bp30cm
       }
       
       if (varname=="bp30to90cm"){ # biomass density of medium pelagics <=30 to 90 cm   
         bp30to90cm <- apply(result_set$U[xcutref[1]:xcutref[2]-1,isave]*other_param$dx*10^other_param$x[xcutref[1]:xcutref[2]-1],2,sum) # >=30, <90 
+        bp30to90cm<-bp30to90cm*min(inputs$depth$depth,100)
         var[paste(inputs$depth$lon),paste(inputs$depth$lat),] <- bp30to90cm
       }
       
       if (varname=="bp90cm"){ # biomass density of large pelagics >=90 cm    
         bp90cm <- apply(result_set$U[xcutref[2]:other_param$Nx,isave]*other_param$dx*10^other_param$x[xcutref[2]:other_param$Nx],2,sum) # >=90
+        bp90cm<-bp90cm*min(inputs$depth$depth,100)
         var[paste(inputs$depth$lon),paste(inputs$depth$lat),] <- bp90cm
       }
       
@@ -340,16 +349,19 @@ mknetcdf_agg<-function(varname, protocol, inputpath, datapath, savetopath, grids
       
       if (varname=="bd30cm"){ # biomass density of small demersal <30 cm    
         bd30cm <- apply(result_set$V[1:xcutref[1]-1,isave]*other_param$dx*10^other_param$x[1:xcutref[1]-1],2,sum) # <30
+        bd30cm<-bd30cm*min(inputs$depth$depth,100)
         var[paste(inputs$depth$lon),paste(inputs$depth$lat),] <- bd30cm
       }
       
       if (varname=="bd30to90cm"){ # biomass density of medium demersal <=30 to 90 cm   
         bd30to90cm <- apply(result_set$V[xcutref[1]:xcutref[2]-1,isave]*other_param$dx*10^other_param$x[xcutref[1]:xcutref[2]-1],2,sum) # >=30, <90
+        bd30to90cm<-bd30to90cm*min(inputs$depth$depth,100)
         var[paste(inputs$depth$lon),paste(inputs$depth$lat),] <- bd30to90cm
       }
       
       if (varname=="bd90cm"){ # biomass density of large demersal >=90 cm    
         bd90cm <- apply(result_set$V[xcutref[2]:other_param$Nx,isave]*other_param$dx*10^other_param$x[xcutref[2]:other_param$Nx],2,sum) # >=90
+        bd90cm<-bd90cm*min(inputs$depth$depth,100)
         var[paste(inputs$depth$lon),paste(inputs$depth$lat),] <- bd90cm
       }
       
@@ -382,7 +394,7 @@ mknetcdf_agg<-function(varname, protocol, inputpath, datapath, savetopath, grids
   dim.def.nc(new_nc, 'time', unlim = TRUE)
   var.def.nc(new_nc, 'time', 'NC_DOUBLE', 'time')
   att.put.nc(new_nc, variable = 'time', type = 'NC_CHAR', name = 'long_name', value = 'time')
-  att.put.nc(new_nc, variable = 'time', type = 'NC_CHAR', name = 'units', value = 'months since 2015-1-1 00:00:00')
+  att.put.nc(new_nc, variable = 'time', type = 'NC_CHAR', name = 'units', value = 'months since 1850-1-1 00:00:00')
   att.put.nc(new_nc, variable = 'time', type = 'NC_CHAR', name = 'calendar', value = 'standard')
   att.put.nc(new_nc, variable = 'time', type = 'NC_CHAR', name = 'axis', value = 'T')
   
@@ -399,8 +411,8 @@ mknetcdf_agg<-function(varname, protocol, inputpath, datapath, savetopath, grids
   att.put.nc(new_nc, variable = "NC_GLOBAL", name = "date_created", type = "NC_CHAR", value = date())
   att.put.nc(new_nc, variable = "NC_GLOBAL", name = "comments", type = "NC_CHAR", value = "Model output for ISIMIP3b")
   att.put.nc(new_nc, variable = "NC_GLOBAL", name = "length-weight_conversion", type = "NC_CHAR", value = 'wet weight = 0.01*(length^3)') 
-  att.put.nc(new_nc, variable = "NC_GLOBAL", name = "ph_input_used", type = "NC_CHAR", value = "no") # CN not sure about this - need to ask 
-  att.put.nc(new_nc, variable = "NC_GLOBAL", name = "diazotroph_input_used", type = "NC_CHAR", value = "yes, diaz carbon biomass added to large phyto carbon biomass") # CN not sure about this - need to ask
+  # att.put.nc(new_nc, variable = "NC_GLOBAL", name = "ph_input_used", type = "NC_CHAR", value = "no") # CN not sure about this - need to ask 
+  # att.put.nc(new_nc, variable = "NC_GLOBAL", name = "diazotroph_input_used", type = "NC_CHAR", value = "yes, diaz carbon biomass added to large phyto carbon biomass") # CN not sure about this - need to ask
   # att.put.nc(new_nc, variable = "NC_GLOBAL", name = "wet-weight to carbon conversion", type = "NC_CHAR", value = "0.0352") # CN not sure about this, current outputs should be in wet weight - need to ask
   
   close.nc(new_nc)
