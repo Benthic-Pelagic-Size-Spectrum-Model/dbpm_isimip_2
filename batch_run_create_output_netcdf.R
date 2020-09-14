@@ -24,18 +24,23 @@ vars2make <- c('tcb', 'tpb', 'bp30cm', 'bp30to90cm',"bp90cm",'tdb','bd30cm', 'bd
 prots <- c('historical','picontrol', 'ssp126', 'ssp585')
 yearRange<- c('1850_2014','1850_2100', '2015_2100', '2015_2100')
 
+
+
+# 2 options 
+# option 1
 # CN: define additional parameters outsirde the function (isave if considering historical protocol where weekly outputs have been saved)
 # use a random grid input/output
 # historical 
-# result_set <- readRDS("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/IPSL-CM6A-LR/historical/dbpm_output_all_1_historical.rds")
-# inputs <- readRDS("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/IPSL-CM6A-LR/historical/grid_1_IPSL-CM6A-LR_historical.rds")
+result_set <- readRDS("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/IPSL-CM6A-LR/historical/dbpm_output_all_1_historical.rds")
+inputs <- readRDS("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/IPSL-CM6A-LR/historical/grid_1_IPSL-CM6A-LR_historical.rds")
 # ssp126 
 # result_set <- readRDS("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/IPSL-CM6A-LR/ssp126/dbpm_output_all_1_ssp126.rds")
 # inputs <- readRDS("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/IPSL-CM6A-LR/ssp126/grid_1_IPSL-CM6A-LR_ssp126.rds")
 # ssp585 
-result_set <- readRDS("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/IPSL-CM6A-LR/ssp585/dbpm_output_all_1_ssp585.rds")
-inputs <- readRDS("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/IPSL-CM6A-LR/ssp585/grid_1_IPSL-CM6A-LR_ssp585.rds")
+# result_set <- readRDS("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/IPSL-CM6A-LR/ssp585/dbpm_output_all_1_ssp585.rds")
+# inputs <- readRDS("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/IPSL-CM6A-LR/ssp585/grid_1_IPSL-CM6A-LR_ssp585.rds")
 
+library("zoo")
 num_years <- ceiling(dim(inputs$ts)[1]/48)
 tss <- as.matrix(inputs$ts)
 for(i in 1:(num_years-1)){ # First week of year is the yearly average, all other weeks are NA
@@ -54,10 +59,13 @@ inputs=list(depth=inputs$depth,ts=fwts)
 rm(spinup)
 isave <- seq(from=300*48, to=((dim(inputs$ts)[1])+1), by = 4) # 48 is weeks in a year; 4 is months in a year 
 # isave <- seq(from=(300*48)+48, to=((dim(inputs$ts)[1])), by = 4)
-length(isave) # 165 years for historical; 85 for others (NOTE: the first year (or 12 month) are the last step of spinup)
+length(isave) # 165 years for historical (or 1980 months); 85 for others (NOTE: the first year (or 12 month) are the last step of spinup)
+grids<-grids[grids!=21747] # only when running historical - do not consider this grid becasue it's problematic and run on a more detailed time scale (X10 time steps)
 
+# option 2
 # or if the model has already been  run on a monthly base (ssp126 adn ssp585)... 
-isave<-1:dim(result_set$U)[2]
+result_set <- readRDS("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/IPSL-CM6A-LR/picontrol/dbpm_output_all_1_picontrol.rds")
+isave<-1:dim(result_set$U)[2] # picontrol = 251 years 
 
 # other parameters to cut and aggregate outputs 
 # these were originally used (and can still be used) inside the model to aggregate outputs (runmodel_yearly ~ line 316)
@@ -85,16 +93,15 @@ other_param = list (isave = isave,
 # CN: dimnames for size (in not aggregated outputs) should be also defined as 'x'
 
 #### TO DO: 
-# 1 re-check names - see line 270 - TO DO 
-# 2 run the function for historical protocol as was run as yearly instead of monthly and was named wrongly - TO DO
-# 3 run the function for other protocol pss126 - OK - redo
-# 4 run the function for other protocol ssp585 - OK - redo
+# 1 re-check names - see line 270; nat - OK
+# 2 run the function for historical protocol as was run as yearly instead of monthly and was named wrongly - RUNNING 
+# 3 run the function for other protocol pss126 - OK  
+# 4 run the function for other protocol ssp585 - OK  
 # 5 set up a netcdf format for the size-spectrum output and run for all protocols and variables - TO DO
 # 6 run picontrol protocol model and variables - OK model, TO DO variables 
-# 7 rerun ssp126 and ssp585 starting from last week of historical runs  - TO DO 
-# adjust netcdf files: - redo anyway 
-# ssp126 - NA and months since 1850; units not given 
-# ssp585 - 1e20 and months since 2015; units g/m^2
+# 7 rerun ssp126 and ssp585 model starting from last week of historical runs - OK 
+# adjust netcdf files:  
+# e.g. ssp585 - 1e20; and months since 2015; units g/m^2; nat - OK
 
 # CN call the function
 source("makenetcdfs_func.R")
@@ -123,11 +130,13 @@ source("makenetcdfs_func.R")
 for(i in 1:length(vars2make)){
   #  i = 1
   
-  #for(j in 1:length(prots)){
+  # for(j in 3:length(prots)){
     
-    # j = 1 # historical: for aggregated outputs - one variable for one protocol (all grids, yearly outputs) takes 7h to run    
-    # j = 3 # ssp126: for aggregated outputs (all grids, monthly outputs) all variables takes 4 h to run  
-    j = 4 # ssp585: for aggregated outputs (all grids, monthly outputs) all variables takes ...  
+    # j = 3 # ssp126: for aggregated outputs (all grids, monthly outputs) all variables takes 10 h to run  
+    # j = 4 # ssp585: for aggregated outputs (all grids, monthly outputs) all variables takes 10 h  
+    # j = 1 # historical: for aggregated outputs (all grids, monthly outputs) all variables takes ~2.2 days 
+    # j = 2 # picontrol for aggregated outputs (all grids, monthly outputs) all variables takes 17 h 
+    
     ptm=proc.time()
     options(warn=-1)
     print(paste('Now working on ', vars2make[i], ' for protocol ', prots[j], sep = ''))
@@ -135,32 +144,35 @@ for(i in 1:length(vars2make)){
     print((proc.time()-ptm)/60.0)
     
   # }
+    
 }
 
 
-# check 
+#### check ----
 nch <- open.nc("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/IPSL-CM6A-LR/netcdf/historical/dbpm_ipsl_agg_tcb_global_annual.nc4")
 tcbh <- var.get.nc(nch, "tcb")
 tcbh[which(tcbh>5)]<-NA
 tcbh_y<-tcbh[,,165]
 image(tcbh_y)
 
-nc <- open.nc("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/IPSL-CM6A-LR/netcdf/ssp126/dbpm_ipsl_cm6a_lr_nobc_ssp126_nosoc_default_bp90cm_global_montly_2015_2100.nc4")
-tcb126 <- var.get.nc(nc, "bp90cm")
+nc <- open.nc("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/IPSL-CM6A-LR/netcdf/ssp126/dbpm_ipsl_cm6a_lr_nobc_ssp126_nat_default_tcb_global_montly_2015_2100.nc4")
+tcb126 <- var.get.nc(nc, "tcb")
 max(tcb126, na.rm =TRUE)
 min(tcb126, na.rm =TRUE)
-tcb126[which(tcb126>5)]<-NA # not sure what the cut off should be here for the different variables 
-tcb126_y<-tcb126[,,1020]
-image(tcb126_y)
+tcb126[which(tcb126 == max(tcb126, na.rm =TRUE))]<-NA # not sure what the cut off should be here for the different variables 
+image(tcb126[,,1031])
+dim(tcb126)
+# problem with last time step.... need to CHECK why...
+tcb126<-tcb126[,,1:dim(tcb126)[3]-1]
 
-nc <- open.nc("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/IPSL-CM6A-LR/netcdf/ssp585/dbpm_ipsl_cm6a_lr_nobc_ssp585_nosoc_default_bp90cm_global_montly_2015_2100.nc4")
-tcb585 <- var.get.nc(nc, "bp90cm")
-tcb585[which(tcb585==100000002004087734272)]<-NA # this is 1e20
-tcb585[which(tcb585>5)]<-NA
-tcb585_y<-tcb585[,,1020]
-image(tcb585_y)
+nc <- open.nc("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/IPSL-CM6A-LR/netcdf/ssp585/dbpm_ipsl_cm6a_lr_nobc_ssp585_nat_default_tcb_global_montly_2015_2100.nc4")
+tcb585 <- var.get.nc(nc, "tcb")
+tcb585[which(tcb585 == max(tcb585, na.rm =TRUE))]<-NA # this is 1e20
+image(tcb585[,,1031])
+# problem with last time step.... need to CHECK why... could be similar to historical runs? 
+tcb585<-tcb585[,,1:dim(tcb585)[3]-1]
 
-# biomass thorugh time 
+#### biomass thorugh time ----
 bio_h<-rowSums(aperm(tcbh, c(3,1,2)), dims = 1, na.rm = TRUE)
 plot(bio_h) # yearly values for now  
 bio_126<-rowSums(aperm(tcb126, c(3,1,2)), dims = 1, na.rm = TRUE)
@@ -168,6 +180,10 @@ plot(bio_126) # monty - decreases
 bio_585<-rowSums(aperm(tcb585, c(3,1,2)), dims = 1, na.rm = TRUE)
 plot(bio_585)
 
+# install.packages("vctrs")
+library("tidyr")
+library("dplyr")
+library("ggplot2")
 df<-data.frame(bio_126 = bio_126, bio_585 = bio_585) %>% 
   mutate(time= seq(1:length(bio_585))) %>% # 2015-20100 in months and including last year (12 months) of spinup
   gather(key, value, -time) 

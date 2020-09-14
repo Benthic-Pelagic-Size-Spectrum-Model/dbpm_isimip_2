@@ -79,8 +79,8 @@ for(i in 1:length(esms)){ # Loop over esms
   
   for(j in 3:length(scenario)){ # Loop over scenario
     
-    # ssp126 saved weekly outputs starting from last historical week = 17 h to run; 117G RERUNNING NOW 
-    # ssp585 saved weekly outputs starting from last historical week = RUNNING NOW 
+    # ssp126 saved weekly outputs starting from last historical week = 13 h to run; 117G  
+    # ssp585 saved weekly outputs starting from last historical week = 12 h to run; 117G 
     # j = 4 
     
     curr_scen <- scenario[j]
@@ -166,8 +166,8 @@ library(dplyr)
 library(tidyr)
 library(ggplot2)
 
-result_set<-readRDS("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/IPSL-CM6A-LR/ssp585/dbpm_output_all_4000_ssp585.rds") 
-result_set_h<-readRDS("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/IPSL-CM6A-LR/historical/dbpm_output_all_4000_historical.rds") 
+result_set<-readRDS("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/IPSL-CM6A-LR/ssp126/dbpm_output_all_3_ssp126.rds") 
+result_set_h<-readRDS("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/IPSL-CM6A-LR/historical/dbpm_output_all_3_historical.rds") 
 
 sum(result_set_h$V[,22317]) # this should be the starting abundance for the ssp126 run 
 sum(result_set$V[,1]) # this should be the second time step in V (the first being the the abundance above, but not saved)
