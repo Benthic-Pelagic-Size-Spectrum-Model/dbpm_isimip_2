@@ -86,13 +86,13 @@ plotGlobalYear <- function(dat, tit, w_sf){
   
   names(dat) <- "layer"
   dat <- st_as_sf(rasterToPolygons(dat)) %>%
-    st_transform(crs = st_crs(robCRS)) #%>% # Convert to Robinson Projection
+    st_transform(crs = st_crs(robCRS)) # %>% # Convert to Robinson Projection
     # mutate(layer = log10(layer/1e3)) # Convert to kg
 
   gg <- ggplot() +
     geom_sf(data = dat, aes(fill = layer), colour = NA) +
     geom_sf(data = w_sf, size = 0.05, fill = "grey20") +
-    scale_fill_gradient(name = expression("Total Biomass (g m"^-2*")"), #(log"[10]*"(kg m"^-2*"))"),
+    scale_fill_gradient(name = expression("Total Biomass (g m"^-2*")"), # (log"[10]*"(kg m"^-2*"))"),
                         limits = c(quantile(dat$layer, .10), quantile(dat$layer, .90)),
                         low = "yellow",
                         high = "red",
@@ -278,10 +278,17 @@ v = 2
   
   # print here in dbpm in gem48 and then get it through github? 
   # Jase method does not work here - use patchwork 
+  # adjust legend first 
+  # gg_map2100[[3]]<-gg_map2100[[3]]+theme(legend.position = "none")
+  # gg_map2100[[2]]<-gg_map2100[[2]]+theme(legend.position = "none")
+  # gg_map[[3]]<-gg_map[[3]]+theme(legend.position = "none")
+  # gg_map[[2]]<-gg_map[[2]]+theme(legend.position = "none")
+  
   library(patchwork)
-  getwd()
+  # getwd()
+  # ?pdf()
   # setwd("/Users/nov017/Dropbox/Mizer-fleet_extension/plot/FD/Final")
-  tiff("DBPM_IPSLmaps.tiff", height=12, width=18, units ='in', res=300)
+  pdf("DBPM_IPSLmaps.pdf", height=18, width=20) # units ='in', res=300)
   (gg_map2100[[3]]+gg_map[[3]]+gg_ts[[3]])/
   (gg_map2100[[1]]+gg_map[[1]]+gg_ts[[1]])/
   (gg_map2100[[2]]+gg_map[[2]]+gg_ts[[2]])
