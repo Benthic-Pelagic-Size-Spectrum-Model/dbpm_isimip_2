@@ -308,7 +308,8 @@ mknetcdf_agg<-function(varname, protocol, inputpath, datapath, savetopath, grids
       # CN note this should be g m-2 now as have not been converted in g C
       # convert all biomasses from g WW per m^3 to per m^2 (see line 307 and 364 in runmodel_yearly.R):   
       # agg[,1:13] <- agg[,1:13] * min(agg$depth,100)
-      # not sure I understand this (ASK), but according to Ryan code, it is: 
+      # integrate throught the water column - but only through photic zone. 
+      # check Ryna (old version run) and your input are avaradged PP across depth or integrated - if integrated (units are gm2) and we don't need the conversion.  
       TotalUbiomass<-TotalUbiomass*min(inputs$depth$depth,100)
       TotalVbiomass<-TotalVbiomass*min(inputs$depth$depth,100)
       # done for below variables as well 
