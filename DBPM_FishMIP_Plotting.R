@@ -35,12 +35,26 @@ plotGlobalChange <- function(all, tit, w_sf, clim){
   }
 
   if(length(all)>1){
-    out <- calc(x[[1:10*12]], mean) # Average first decade *12 if model resolution is months 
-    out <- addLayer(out, calc(y[[(dim(y)[3]-9*12):dim(y)[3]]], mean)) #  Average last decade
+    # avarage by month first ? 
+    # avarage 1990-1999
+    refFirstYear<-(1990-1950)*12
+    # ((refFirstYear+10*12)-refFirstYear)/12
+    # x 1950-2014
+    # y 2015-2100
+    # y from 2090-2099
+    refLastYear<-(2091-2015)*12
+    # (dim(y)[3]-refLastYear)/12 # 10 years avarage
+    out <- calc(x[[refFirstYear:(refFirstYear+10*12)]], mean) # Average 1990-1999 *12 if model resolution is months 
+    out <- addLayer(out, calc(y[[refLastYear:dim(y)[3]]], mean)) #  Average last decade
     x_change <- ((out[[2]] - out[[1]])/out[[1]]) * 100
   }else{ # this should be right - CHECK!
-    out <- calc(x[[1:10*12]], mean) # Average first decade *12 if model resolution is months 
-    out <- addLayer(out, calc(x[[(dim(x)[3]-9*12):dim(x)[3]]], mean)) #  Average last decade
+    refFirstYear<-(1990-1950)*12
+    refLastYear<-(2091-1950)*12
+    out <- calc(x[[refFirstYear:(refFirstYear+10*12)]], mean) # as above 
+    out <- addLayer(out, calc(x[[refLastYear:dim(x)[3]]], mean)) 
+    # previous: first vs last week 
+    # out <- calc(x[[1:10*12]], mean) # Average first decade *12 if model resolution is months 
+    # out <- addLayer(out, calc(x[[(dim(x)[3]-9*12):dim(x)[3]]], mean)) #  Average last decade
     x_change <- ((out[[2]] - out[[1]])/out[[1]]) * 100
   }
 
@@ -173,11 +187,22 @@ plotTimeseries <- function(all, tit){
     
   df2 <- df %>%
     group_by(Year) %>%
-    summarise(Biomass = median(Biomass, na.rm = TRUE),
-              .groups = "keep") #  not sure what this is 
+    summarise(Biomass = median(Biomass, na.rm = TRUE)) #,
+              # .groups = "keep") #  not sure what this is 
+  
+  # CN adding  - make it as Lotze et al 
+  # consider only 1970 owards and calcualte changes from 1990-1999 decade 
+  df2<- filter(df2, Year>=1970)
+  refDecade <- df2 %>% 
+    filter(Year >= 1990, Year <=2000)
+  refDecade<-mean(refDecade$Biomass, na.rm = TRUE)
   
   # This doesn't seem to work in mutate. It just returns 0
-  df2$BiomassChange = (df2$Biomass - mean(df2$Biomass[1:10], na.rm = TRUE))/mean(df2$Biomass[1:10], na.rm = TRUE) * 100
+  df2$BiomassChange = (df2$Biomass - refDecade)/refDecade * 100
+  
+  # CN stop adding - use line below if you consider all years and do the mean over first decade 
+  # This doesn't seem to work in mutate. It just returns 0
+  # df2$BiomassChange = (df2$Biomass - mean(df2$Biomass[1:10], na.rm = TRUE))/mean(df2$Biomass[1:10], na.rm = TRUE) * 100
   
   gg <- ggplot(data = df2, aes(x = Year, y = BiomassChange)) +
     geom_line() +
@@ -216,10 +241,27 @@ v = 2
   gg_ts <- list()
   clim <- c(-50, 50)
   
+  ##### CMIP6 ----
+  
+  # ssp126
+  hist<-stack("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/IPSL-CM6A-LR/netcdf/historical/dbpm_ipsl_cm6a_lr_nobc_historical_nat_default_tcb_global_montly_1850_2014.nc4")
+  fut <- stack("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/IPSL-CM6A-LR/netcdf/ssp126/dbpm_ipsl_cm6a_lr_nobc_ssp126_nat_default_tcb_global_montly_2015_2100.nc4")
+  tit <- paste0("IPSL SSP585 ",var[v]," (1950-2100 Change CMIP6)")
+  
   ### CN trial 
-  #  ssp126
-  hist <- stack(paste0("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/IPSL-CM6A-LR/netcdf/historical/dbpm_ipsl_cm6a_lr_nobc_historical_nat_default_tcb_global_montly_1850_2014.nc4"))
-  fut <- stack(paste0("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/IPSL-CM6A-LR/netcdf/ssp126/dbpm_ipsl_cm6a_lr_nobc_ssp126_nat_default_tcb_global_montly_2015_2100.nc4"))
+  # explore the file before plotting and get some values 
+  # nc <- open.nc("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/IPSL-CM6A-LR/netcdf/ssp126/dbpm_ipsl_cm6a_lr_nobc_ssp126_nat_default_tcb_global_montly_2015_2100.nc4")
+  # class(nc)
+  # print.nc(nc)
+  # nc_data <- read.nc(nc)
+  # time_units <- att.get.nc(nc, "time", "units")
+  # lat_units <- att.get.nc(nc, "lat", "units")
+  # mytcb <- nc_data$tcb
+  # mylat <- nc_data$lat
+  # mylon <- nc_data$lon # something wrong here but length is 360 so should be good? ... 
+  # length(mylon)
+  # mytime<-nc_data$time # something wrong here but this should be sequential (0 to 1031?) ... 
+  # length(mytime)
 
   # cut 1850-1950 for hist data  
   cut<-((2015-1850)*12) - ((2015-1950)*12) # from beginning of 1850 to end of 2014
@@ -239,7 +281,6 @@ v = 2
   # nc[nc == max(nc)]<-NA
   # image(nc)
 
-  tit <- paste0("IPSL SSP126 ",var[v]," (1950-2100 Change)")
   all<-list(hist = hist, fut = fut)
   
   gg_map[[1]] <- plotGlobalChange(all, tit, world_sf, clim)
@@ -253,7 +294,7 @@ v = 2
   #  ssp585
   hist<-stack(paste0("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/IPSL-CM6A-LR/netcdf/historical/dbpm_ipsl_cm6a_lr_nobc_historical_nat_default_tcb_global_montly_1850_2014.nc4"))
   fut <- stack(paste0("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/IPSL-CM6A-LR/netcdf/ssp585/dbpm_ipsl_cm6a_lr_nobc_ssp585_nat_default_tcb_global_montly_2015_2100.nc4"))
-  tit <- paste0("IPSL SSP585 ",var[v]," (1950-2100 Change)")
+  tit <- paste0("IPSL SSP585 ",var[v]," (1950-2100 Change CMIP6)")
   
   cut<-((2015-1850)*12) - ((2015-1950)*12) # from beginning of 1850 to end of 2014
   hist<-dropLayer(hist, seq(1:cut))
@@ -265,9 +306,9 @@ v = 2
   gg_map2100[[2]] <- plotGlobalYear(fut[[(86*12)-2]], str_replace(tit,"1950-2100 Change", "2100"), world_sf)
   rm(hist, fut, all)
   
-  #  pi - error to figure out 
+  #  picontrol  
   hist <- stack(paste0("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/IPSL-CM6A-LR/netcdf/picontrol/dbpm_ipsl_cm6a_lr_nobc_picontrol_nat_default_tcb_global_montly_1850_2100.nc4"))
-  tit <- paste0("IPSL PRE-INDUSTRIAL ",var[v]," (1950-2100 Change)")
+  tit <- paste0("IPSL PRE-INDUSTRIAL ",var[v]," (1950-2100 Change CMIP6)")
   cut<-((2015-1850)*12) - ((2015-1950)*12) # from beginning of 1850 to end of 2014
   hist<-dropLayer(hist, seq(1:cut))
   all<-list(hist = hist)
@@ -288,22 +329,205 @@ v = 2
   # getwd()
   # ?pdf()
   # setwd("/Users/nov017/Dropbox/Mizer-fleet_extension/plot/FD/Final")
-  pdf("DBPM_IPSLmaps.pdf", height=18, width=20) # units ='in', res=300)
+  pdf("DBPM_IPSLmaps_CMIP6.pdf", height=18, width=20) # units ='in', res=300)
   (gg_map2100[[3]]+gg_map[[3]]+gg_ts[[3]])/
   (gg_map2100[[1]]+gg_map[[1]]+gg_ts[[1]])/
   (gg_map2100[[2]]+gg_map[[2]]+gg_ts[[2]])
   dev.off()
   
+  ##### CMIP5 ----
   
-  # CMIP5 - have a look at /Users/nov017/Dropbox/FishMIP-analyses-master/Exctract FishMipMaps_edits.r but ask Derek first 
-  ### CN trial 
-  #  ssp126
-  library('RNetCDF')
-  nc <- open.nc("/../../rd/gem/private/fishmip_outputs/aug_2017/netcdf/dbpm_ipsl-cm5a-lr_rcp26_no-fishing_no-oa_tcb.nc")
-  hist<- var.get.nc(nc, "tcb")
+  gg_map_cmip5 <- list()
+  gg_map1950_cmip5 <- list()
+  gg_map2100_cmip5 <- list()
+  gg_ts_cmip5 <- list()
+  
+  # ssp126
+  # explore the file before plotting and get some values 
+  # nc <- open.nc("/../../rd/gem/private/fishmip_outputs/aug_2017/netcdf/dbpm_ipsl-cm5a-lr_rcp26_no-fishing_no-oa_tcb.nc")
+  # nc_stack <- stack("/../../rd/gem/private/fishmip_outputs/aug_2017/netcdf/dbpm_ipsl-cm5a-lr_rcp26_no-fishing_no-oa_tcb.nc")
+  # class(nc)
+  # print.nc(nc)
+  # nc_data <- read.nc(nc)
+  # time_units <- att.get.nc(nc, "time", "units")
+  # lat_units <- att.get.nc(nc, "lat", "units")
+  # mytcb <- nc_data$tcb
+  # mylat <- nc_data$lat
+  # mylon <- nc_data$lon 
+  # length(mylon)
+  # mytime<-nc_data$time  
   
   hist <- stack("/../../rd/gem/private/fishmip_outputs/aug_2017/netcdf/dbpm_ipsl-cm5a-lr_rcp26_no-fishing_no-oa_tcb.nc")
-  fut <- stack(paste0("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/IPSL-CM6A-LR/netcdf/ssp126/dbpm_ipsl_cm6a_lr_nobc_ssp126_nat_default_tcb_global_montly_2015_2100.nc4"))
+  tit <- paste0("IPSL SSP126 ",var[v]," (1950-2100 Change CMIP5)")
+  # convert long 0:360 to -180:180 
+  hist_rotate<-raster::rotate(hist)
+  all<-list(hist = hist_rotate)
+  gg_map_cmip5[[1]] <- plotGlobalChange(all, tit, world_sf, clim)
+  gg_ts_cmip5[[1]] <- plotTimeseries(all, tit)
+  gg_map2100_cmip5[[1]] <- plotGlobalYear(hist_rotate[[(150*12)-2]], str_replace(tit,"1950-2100 Change", "2100"), world_sf)
+  rm(hist, all,hist_rotate)
+  
+  ## ssp585 # change file! 
+  hist <- stack("/../../rd/gem/private/fishmip_outputs/aug_2017/netcdf/dbpm_ipsl-cm5a-lr_rcp85_no-fishing_no-oa_tcb.nc")
+  tit <- paste0("IPSL SSP585 ",var[v]," (1950-2100 Change CMIP5)")
+  # convert long 0:360 to -180:180 
+  hist_rotate<-raster::rotate(hist)
+  all<-list(hist = hist_rotate)
+  gg_map_cmip5[[2]] <- plotGlobalChange(all, tit, world_sf, clim)
+  gg_ts_cmip5[[2]] <- plotTimeseries(all, tit)
+  gg_map2100_cmip5[[2]] <- plotGlobalYear(hist_rotate[[(150*12)-2]], str_replace(tit,"1950-2100 Change", "2100"), world_sf)
+  rm(hist, all,hist_rotate)
+  
+  library(patchwork)
+  # getwd()
+  # ?pdf()
+  # setwd("/Users/nov017/Dropbox/Mizer-fleet_extension/plot/FD/Final")
+  pdf("DBPM_IPSLmaps_CMIP5.pdf", height=12, width=20) # units ='in', res=300)
+  (gg_map2100_cmip5[[1]]+gg_map_cmip5[[1]]+gg_ts_cmip5[[1]])/
+  (gg_map2100_cmip5[[2]]+gg_map_cmip5[[2]]+gg_ts_cmip5[[2]])
+  dev.off()
+  
+  
+  
+  
+  
+  
+  
+  ##### CMIP5 Derek code ----
+  library('ncdf4')
+  nc <- nc_open("/../../rd/gem/private/fishmip_outputs/aug_2017/netcdf/dbpm_ipsl-cm5a-lr_rcp26_no-fishing_no-oa_tcb.nc")
+  print(nc)
+  # Look at the attributes and dimensions
+  year1_historical = 1971
+  year1_present = 2006
+  
+  # Extract important information
+  data_attributes <-ncatt_get(nc,"tcb")
+  missing_value <- data_attributes$'_FillValue'
+  main_title <- data_attributes$long_name
+  data_units <- data_attributes$units
+  
+  if (data_units != "g C / m^2"){ # original is gC m-2
+    print("Unrecognized units")
+    data_units = "unknown"
+  }else {
+    data_units = "kg km-2" 
+  }
+
+  # get variable of interest 
+  lon1<-ncvar_get(nc, "lon")
+  lat1<-ncvar_get(nc, "lat")
+  time_months1<-ncvar_get(nc, "time")
+  temp_array1 <-ncvar_get(nc,"tcb")
+  dim(temp_array1)
+  1812/12 # 151 years (1950-2100)
+  
+  # for present as well ... 
+  
+  # Extract yearly averages
+  historical_catches = array(rep(0,length(time_months1)/12* length(lon1)* length(lat1)),c(length(time_months1)/12, length(lon1), length(lat1)))
+  present_catches = array(rep(0,length(time_months2)/12* length(lon2)* length(lat2)),c(length(time_months2)/12, length(lon2), length(lat2)))
+  temp_value = 0
+  location = 1
+  
+  # historical
+  for (ii in 1:length(lon1))
+  {
+    for (jj in 1:length(lat1))
+    {
+      # Extract values per grid cell
+      temp_vec1 = vector(length = length(time_months1))
+      for (hh in 1:length(time_months1))
+      {
+        if (!is.na(temp_array1[ii,jj,hh]))
+          temp_vec1[hh] = temp_array1[ii,jj,hh]
+      }
+      
+      # Extract yearly averages
+      year_values1 = vector(length = length(time_months1)/12)
+      year_vector1 = vector(length = 12)
+      year_position = 1
+      for (hh in 1:length(time_months1))
+      {
+        year_vector1[hh %% 12] = temp_vec1[hh]
+        if ((hh %% 12) == 0)
+        {
+          year_values1[year_position] = mean(year_vector1)
+          year_position = year_position + 1
+          year_vector1 = vector(length = 12)
+        }
+        
+      }
+      
+      # Fill in 3D matrix of annual averages
+      historical_catches[,ii,jj] = year_values1
+    }
+  }
+  
+  # for present as well ....
+  
+  # Extract the 1971:1979 averages
+  mat_1971_1979 = matrix(nrow = length(lon1), ncol = length(lat1))
+  first_position_to_extract = 1971 - year1_historical + 1
+  for (ii in 1:length(lon1))
+  {
+    for (jj in 1:length(lat1))
+    {
+      mat_1971_1979[ii,jj] = mean(historical_catches[first_position_to_extract:(first_position_to_extract + 8),ii,jj])
+      # Convert top kg / km2
+      mat_1971_1979[ii,jj] = mat_1971_1979[ii,jj] * 1000
+    }
+  }
+  
+  # Extract the 1990:1999 averages
+  mat_1990_1999 = matrix(nrow = length(lon1), ncol = length(lat1))
+  first_position_to_extract = 1990 - year1_historical + 1
+  for (ii in 1:length(lon1))
+  {
+    for (jj in 1:length(lat1))
+    {
+      mat_1990_1999[ii,jj] = mean(historical_catches[first_position_to_extract:(first_position_to_extract + 9),ii,jj])
+      # Convert to kg / km2
+      mat_1990_1999[ii,jj] = mat_1990_1999[ii,jj] * 1000
+    }
+  }
+  
+  
+  # Extract the 2090:2099 averages
+  # original was about present - so lat2 and lon2 and present_catches
+  mat_2090_2099 = matrix(nrow = length(lon1), ncol = length(lat1))
+  first_position_to_extract = 2090 - year1_present + 1
+  for (ii in 1:length(lon1))
+  {
+    for (jj in 1:length(lat1))
+    {
+      mat_2090_2099[ii,jj] = mean(historical_catches[first_position_to_extract:(first_position_to_extract + 9),ii,jj])
+      # Convert top kg / km2
+      mat_2090_2099[ii,jj] = mat_2090_2099[ii,jj] * 1000
+      
+    }
+    
+  }
+  
+  #Extract 2090-2099 relative to 1990-1999 (%)
+  mat_delta26<- mat_2090_2099/mat_1990_1999*100 - 100
+  mat_delta85<- mat_2090_2099/mat_1990_1999*100 - 100
+  
+  
+  ### trial merge Jase adn Derek codes ?? not working try otherwise 
+  all<-list(all = mat_delta26)
+  tit = "trial"
+  # gg_map_trial <- plotGlobalChange(all, tit, world_sf, clim)
+  
+  # from plotFishMip -
+  # I don't have  the coastline data ... 
+  library(raster)
+  # install.packages("maptools")
+  library(maptools)
+  library(RColorBrewer)
+
+  
+
   
   
   
@@ -312,7 +536,8 @@ v = 2
   
   
   
-  ## original code 
+  
+  ##### original code Jase - looping through variables ----
   
   gg_map <- list()
   gg_map1950 <- list()
@@ -394,3 +619,7 @@ v = 2
   wrap_plots(gg_map2100, ncol = 2)
   ggsave(paste0("Figures/ZooMSS_Map2100_",var[v],".pdf"))
 #}
+
+  
+  
+  
