@@ -295,6 +295,21 @@ v = 2
   dev.off()
   
   
+  # CMIP5 - have a look at /Users/nov017/Dropbox/FishMIP-analyses-master/Exctract FishMipMaps_edits.r but ask Derek first 
+  ### CN trial 
+  #  ssp126
+  library('RNetCDF')
+  nc <- open.nc("/../../rd/gem/private/fishmip_outputs/aug_2017/netcdf/dbpm_ipsl-cm5a-lr_rcp26_no-fishing_no-oa_tcb.nc")
+  hist<- var.get.nc(nc, "tcb")
+  
+  hist <- stack("/../../rd/gem/private/fishmip_outputs/aug_2017/netcdf/dbpm_ipsl-cm5a-lr_rcp26_no-fishing_no-oa_tcb.nc")
+  fut <- stack(paste0("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/IPSL-CM6A-LR/netcdf/ssp126/dbpm_ipsl_cm6a_lr_nobc_ssp126_nat_default_tcb_global_montly_2015_2100.nc4"))
+  
+  
+  
+  
+  
+  
   
   
   ## original code 
