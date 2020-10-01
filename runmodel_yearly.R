@@ -17,7 +17,7 @@ rungridsep <- function(igrid
   
   # CN trial 
   # where is igrid specified? in the loop that calls this function 
-  # igrid <-4000
+  # igrid <-1
   # gcm = curr_esm 
   # protocol = curr_scen
   # output = "partial"
@@ -111,6 +111,10 @@ rungridsep <- function(igrid
     isave <- seq(from=300*48, to=((dim(inputs$ts)[1])+1), by = 4) # save outputs every 4 weeks (montly)
     # length(isave) # save montly outputs # e.g. 3012 if picontrol
     # isave <- seq(from=300*48, to=((dim(inputs$ts)[1])+1), by = 1) # save outputs weekly (but cut spinup)
+    
+    # CN: make sure you are not saving the last time dimention of the U, V and W matrices 
+    # these matrices in project() are built as U[,Neq+1] and hence have 1 time step more than the inputs  
+    isave <- seq(from=300*48, to=((dim(inputs$ts)[1])), by = 4) # not sure why this is to ...+1 above ?! 
 
     ## CHECK IF MODEL HAS CRASHED, IF IT HAS, 10X MORE STEPS AND RUN AGAIN
     # CN in this case, we do the same as for the function above but we increase the time step resolution (run more in-between input values)
@@ -203,6 +207,8 @@ rungridsep <- function(igrid
         # isave <- seq(from=300*480+2, to=((dim(inputs$ts)[1])+1), by = 480)
         # CN save monthly 
         isave <- seq(from=300*480+2, to=((dim(inputs$ts)[1])+1), by = 40)
+        isave <- seq(from=300*480+2, to=((dim(inputs$ts)[1])), by = 40) # Cn  see above 
+        
         }
     
         # OPTION 2: If model did not crash in spinup, we do not need to rerun the spinup, this saves about 20 minutes per run
@@ -284,10 +290,11 @@ rungridsep <- function(igrid
           # isave <- seq(from=2, to=((dim(inputs$ts)[1])+1), by = 480)
           # CN save monthly 
           isave <- seq(from=2, to=((dim(inputs$ts)[1])+1), by = 40)
+          isave <- seq(from=2, to=((dim(inputs$ts)[1])), by = 40) # Cn see above 
         }
       }
   
-  if (result_set$notrun==F) {  
+  if (result_set$notrun==FALSE) {  
     
     # CN options:
     # output == "aggregated" old - moved to makenetcdf_func.R and considered isismip3b requirements  
@@ -380,32 +387,32 @@ rungridsep <- function(igrid
     if (output=="not_aggregated") {
       
       # CN see above for saving options - i.e. add isave to save only yearly instead of weakly 
-      output_filename <- paste(output_files_location, "trial", igrid, '_', protocol, '.rds', sep = "") 
+      output_filename <- paste(output_files_location, "dbpm_output_all_", igrid, '_', protocol, '.rds', sep = "") 
       saveRDS(result_set, file = output_filename, compress = FALSE)
       
     }
     
   }
   
-  if (result_set$notrun==T) { # CN this sequence of 'if' might not be needed 
-                              # as 'aggregated' is not an option anymore
-                              # hence when the model does not run, we can save matrix of NAs (see framework below)
+#  if (result_set$notrun==T) { # CN this sequence of 'if' might not be needed 
+#                              # as 'aggregated' is not an option anymore
+#                              # hence when the model does not run, we can save matrix of NAs (see framework below)
+#    
+#    # CN do not need if(output=="aggregated") and so on becasue if the model has not run after going through all options above, we are saving NAs anyway 
+#    # although  this might become problematic when building the  netcdf becasue objects (e.g. U) for this grid won't be found - need an ifelse there? 
+#    TotalUbiomass <- Ubiomass10plus <- Ubiomass270plus <- rep(NA,length=length(isave))
+#    TotalVbiomass <- Vbiomass10plus <- Vbiomass270plus <- TotalW <- rep(NA,length=length(isave))
+#    TotalUcatch <- Ucatch10plus <- Ucatch270plus <- TotalVcatch <- Vcatch10plus <- Vcatch270plus <- rep(NA,length=length(isave))
+#    agg <- data.frame(TotalUbiomass,Ubiomass10plus,Ubiomass270plus,TotalVbiomass,Vbiomass10plus,Vbiomass270plus,TotalW,TotalUcatch,Ucatch10plus,Ucatch270plus,TotalVcatch,Vcatch10plus,Vcatch270plus)
+#    agg$lat <- rep(params$lat,each=length(agg[,1]))
+#    agg$lon <- rep(params$lon,each=length(agg[,1]))
+#    agg$depth <- rep(params$depth,each=length(agg[,1]))
+#    
+#    output_filename <- paste(output_files_location, "dbpm_output_all_", igrid, '_', protocol, '.rds', sep = "") 
+#    saveRDS(agg, file=output_filename, compress = FALSE)
+#    rm(TotalUbiomass,Ubiomass10plus,Ubiomass270plus,TotalUcatch,Ucatch10plus,Ucatch270plus,TotalVbiomass,Vbiomass10plus,Vbiomass270plus,TotalVcatch,Vcatch10plus,Vcatch270plus, TotalW)
     
-    # CN do not need if(output=="aggregated") and so on becasue if the model has not run after going through all options above, we are saving NAs anyway 
-    # although  this might become problematic when building the  netcdf becasue objects (e.g. U) for this grid won't be found - need an ifelse there? 
-    TotalUbiomass <- Ubiomass10plus <- Ubiomass270plus <- rep(NA,length=length(isave))
-    TotalVbiomass <- Vbiomass10plus <- Vbiomass270plus <- TotalW <- rep(NA,length=length(isave))
-    TotalUcatch <- Ucatch10plus <- Ucatch270plus <- TotalVcatch <- Vcatch10plus <- Vcatch270plus <- rep(NA,length=length(isave))
-    agg <- data.frame(TotalUbiomass,Ubiomass10plus,Ubiomass270plus,TotalVbiomass,Vbiomass10plus,Vbiomass270plus,TotalW,TotalUcatch,Ucatch10plus,Ucatch270plus,TotalVcatch,Vcatch10plus,Vcatch270plus)
-    agg$lat <- rep(params$lat,each=length(agg[,1]))
-    agg$lon <- rep(params$lon,each=length(agg[,1]))
-    agg$depth <- rep(params$depth,each=length(agg[,1]))
-    
-    output_filename <- paste(output_files_location, "dbpm_output_all_", igrid, '_', protocol, '.rds', sep = "") 
-    saveRDS(agg, file=output_filename, compress = FALSE)
-    rm(TotalUbiomass,Ubiomass10plus,Ubiomass270plus,TotalUcatch,Ucatch10plus,Ucatch270plus,TotalVbiomass,Vbiomass10plus,Vbiomass270plus,TotalVcatch,Vcatch10plus,Vcatch270plus, TotalW)
-    
-  }
+#  }
   
   # end rungrid function
   rm(params,result_set,inputs)
@@ -426,7 +433,7 @@ rungridsep_ssp <- function(igrid
                        ,output_historical_location) {
   
   # CN trial 
-  # igrid <-4000
+  # igrid <-1
   # gcm = curr_esm 
   # protocol = curr_scen
   # output = "partial"
@@ -471,11 +478,12 @@ rungridsep_ssp <- function(igrid
     # 2) last time step sizespectra for U, V and W
     # specify these values in param() below
     outputs_hist <- readRDS(curr_grid_output_h) 
-    U.initial = outputs_hist$U[,dim(outputs_hist$U)[2]-1] # second last time step spectra for U 
-                                                          # because historical outputs have 1 time step more than inputs
-                                                          # should be adjusted in model runs or historical outputs 
-    V.initial = outputs_hist$V[,dim(outputs_hist$V)[2]-1]
-    W.initial = outputs_hist$W[dim(outputs_hist$W)-1]
+    # dim(outputs_hist$V)
+    U.initial = outputs_hist$U[,dim(outputs_hist$U)[2]] # use second last time step spectra for U if using historical weekly saved outputs as per ISIMIP3b_withTempOnSenecsence - outputs_hist$U[,dim(outputs_hist$U)[2]-1]
+                                                        # because historical outputs have 1 time step more than inputs
+                                                        # should be adjusted in model runs or historical outputs 
+    V.initial = outputs_hist$V[,dim(outputs_hist$V)[2]]
+    W.initial = outputs_hist$W[dim(outputs_hist$W)]
     
     ## Extract single input for each year (first week of each year), then fill all other inputs as NA's
     num_years <- ceiling(dim(inputs$ts)[1]/48)
@@ -494,7 +502,7 @@ rungridsep_ssp <- function(igrid
     fwts<-data.frame(na.approx(tss))
     
     # No spin up if running ssp
-    fwts <- fwts[,-1] # CN -1 is the t dimentions   
+    fwts <- fwts[,-1] # CN -1 is the t dimentions column    
     
     ### CN: NOT SURE about the need of this step ----
     # NO - COMMENTED see above 
@@ -579,9 +587,9 @@ rungridsep_ssp <- function(igrid
     # (either calucated given input params or from last step of historical runs 
     # - i.e. 2014 values - so we save from 2 to dim()+1
     # length(seq(from=2, to=((dim(inputs$ts)[1])+1), by = 1)) # weekly 
-    # length(seq(from=2, to=((dim(inputs$ts)[1])+1), by = 4)) # montly 
     # length(seq(from=2, to=((dim(inputs$ts)[1])+1), by = 48)) # yearly
-    isave <- seq(from=2, to=((dim(inputs$ts)[1])+1), by = 4)
+    isave <- seq(from=2, to=((dim(inputs$ts)[1])+1), by = 4) # montly 
+    isave <- seq(from=2, to=((dim(inputs$ts)[1])), by = 4) # montly, but excluding last time step of outputs as they have one time step more than inputs - see above 
     # length(isave) # 1032 if monthly
     # chack saved variable: 
     # U = result_set$U[,isave]
@@ -669,6 +677,7 @@ rungridsep_ssp <- function(igrid
       # save results (no spin up this time) 
       # CN 40 instead of 4 (480 if yearly and 10 if weekly) beacsue we expanded the time component of the inputs
       isave <- seq(from=2, to=((dim(inputs$ts)[1])+1), by = 40)  
+      isave <- seq(from=2, to=((dim(inputs$ts)[1])), by = 40) #  see above   
       # length(isave) # 1032 
       
     }
@@ -700,7 +709,7 @@ rungridsep_ssp <- function(igrid
     if (output=="not_aggregated") {
       
       # CN see above for saving options - i.e. add isave to save only yearly instead of weakly 
-      output_filename <- paste(output_files_location, "trial", igrid, '_', protocol, '.rds', sep = "") 
+      output_filename <- paste(output_files_location, "dbpm_output_all_", igrid, '_', protocol, '.rds', sep = "") 
       saveRDS(result_set, file = output_filename, compress = FALSE)
       }
 

@@ -64,7 +64,7 @@ sizemodel<-function(params,ERSEM.det.input=F,U_mat,V_mat,W_mat,temp.effect=T,eps
     # V.init = params$V.init
     # W.init = params$W.init
     # equilibrium = params$equilibrium
-  
+    
     #---------------------------------------------------------------------------------------
     # Model for a dynamical ecosystem comprised of: two functionally distinct size spectra (predators and detritivores), size structured primary producers and an unstructured detritus resource pool. 
     # time implicit upwind difference discretization algorithm (from Ken Andersen)
@@ -76,6 +76,7 @@ sizemodel<-function(params,ERSEM.det.input=F,U_mat,V_mat,W_mat,temp.effect=T,eps
     # Senescence Mortality also included.  Options to include dynamic reproduction and predator handling time (but not currently used).
     #
     # Code modified for global fishing mortality rate application. JLB 17/02/2014
+    # Code modified to include temperature scaling on senescence and detrital flux. RFH 18/06/2020. (CN  look for pel.tempeffect*SM.u; pel.tempeffect*SM.v)  
     # ---------------------------------------------------------------------------------------
     # Input parameters to vary:
     
@@ -164,7 +165,7 @@ sizemodel<-function(params,ERSEM.det.input=F,U_mat,V_mat,W_mat,temp.effect=T,eps
     
     #matrix for recording the two size spectra 
     V = U = array(0, c(length(x), Neq+1))
-    
+
     #vector to hold detrtitus biomass density (g.m-2)
     W = array(0,Neq+1)
     
@@ -207,7 +208,7 @@ sizemodel<-function(params,ERSEM.det.input=F,U_mat,V_mat,W_mat,temp.effect=T,eps
     W[1]<-W.init             # set initial detritus biomass density (g.m^-3) 
     
     if(use.init == TRUE){
-      # set up with the initial values from previous run
+    # set up with the initial values from previous run
       U[ref:length(x),1]<-U.init[ref:length(x)]           # set initial consumer size spectrum from previous run
       V[ref.det:length(x),1]<-V.init[ref.det:length(x)]  # set initial detritivore spectrum from previous run
     }
@@ -268,7 +269,7 @@ sizemodel<-function(params,ERSEM.det.input=F,U_mat,V_mat,W_mat,temp.effect=T,eps
     
     for (i in 1:Neq) {
       
-      #  setTxtProgressBar(pb, i) # Update progress bar
+    #  setTxtProgressBar(pb, i) # Update progress bar
       
       if(W[i]=="NaN"|W[i]<0)
       {
@@ -340,7 +341,7 @@ sizemodel<-function(params,ERSEM.det.input=F,U_mat,V_mat,W_mat,temp.effect=T,eps
       #PM.u[,i]<-as.vector((1-f.pel)*(A.u*10^(x*alpha.u)*pref.pel)*(U[,i]*dx)%*%(mphi))  #yr-1 
       
       
-      Z.u[,i]<- PM.u[,i] + pel.Tempeffect[i]*OM.u + SM.u + Fvec.u     #yr-1
+      Z.u[,i]<- PM.u[,i] + pel.Tempeffect[i]*OM.u + pel.Tempeffect[i]*SM.u + Fvec.u     #yr-1
       
       # Benthos growth integral
       GG.v[,i]<-(1-def.low)*K.d*f.det #yr-1
@@ -357,7 +358,7 @@ sizemodel<-function(params,ERSEM.det.input=F,U_mat,V_mat,W_mat,temp.effect=T,eps
       
       #PM.v[,i]<-as.vector((1-f.ben)*(A.u*10^(x*alpha.u)*pref.ben)*(U[,i]*dx)%*%(mphi))  #yr-1
       
-      Z.v[,i]<-PM.v[,i]+ ben.Tempeffect[i]*OM.v + SM.v  + Fvec.u  #yr-1
+      Z.v[,i]<-PM.v[,i]+ ben.Tempeffect[i]*OM.v + ben.Tempeffect[i]*SM.v  + Fvec.u  #yr-1
       
       #total biomass density eaten by pred (g.m-2.yr-1)
       
@@ -401,9 +402,9 @@ sizemodel<-function(params,ERSEM.det.input=F,U_mat,V_mat,W_mat,temp.effect=T,eps
           
           input.w<-(sinking.rate[i]*(sum(defbypred[ref:Nx]*dx)
                                      + sum(pel.Tempeffect[i]*OM.u[1:Nx]*U[1:Nx,i]*10^(x[1:Nx])*dx) 
-                                     + sum(SM.u[1:Nx]*U[1:Nx,i]*10^(x[1:Nx])*dx))
+                                     + sum(pel.Tempeffect[i]*SM.u[1:Nx]*U[1:Nx,i]*10^(x[1:Nx])*dx))
                     + (sum(ben.Tempeffect[i]*OM.v[1:Nx]*V[1:Nx,i]*10^(x[1:Nx])*dx) 
-                       + sum(SM.v[1:Nx]*V[1:Nx,i]*10^(x[1:Nx])*dx)) )
+                       + sum(ben.Tempeffect[i]*SM.v[1:Nx]*V[1:Nx,i]*10^(x[1:Nx])*dx)) )
           # )
           
         }
@@ -411,7 +412,7 @@ sizemodel<-function(params,ERSEM.det.input=F,U_mat,V_mat,W_mat,temp.effect=T,eps
         
         if (det.coupling==0.0) {
           
-          input.w<-sum(ben.Tempeffect[i]*OM.v[1:Nx]*V[1:Nx,i]*10^(x[1:Nx])*dx) + sum(SM.v[1:Nx]*V[1:Nx,i]*10^(x[1:Nx])*dx)
+          input.w<-sum(ben.Tempeffect[i]*OM.v[1:Nx]*V[1:Nx,i]*10^(x[1:Nx])*dx) + sum(ben.Tempeffect[i]*SM.v[1:Nx]*V[1:Nx,i]*10^(x[1:Nx])*dx)
           
         }
         
@@ -525,7 +526,7 @@ sizemodel<-function(params,ERSEM.det.input=F,U_mat,V_mat,W_mat,temp.effect=T,eps
       
       
     }#end time iteration
-    
+   
     return(list(U=U[,],GG.u=GG.u[,],PM.u=PM.u[,],V=V[,],GG.v=GG.v[,],PM.v=PM.v[,],Y.u=Y.u[,],Y.v=Y.v[,],W=W[], params=params))
     
     
@@ -619,7 +620,7 @@ sizeparam<-function(equilibrium=F, dx=0.1,xmin=-12,xmax=6,xmin.consumer.u=-7,xmi
   # "other" mortality parameters
   
   param$mu0=0.2	      # residual natural mortality
-  param$xs=3          # size at sensenscence
+  param$xs=3          # size at senescence
   param$p.s=0.3       # exponent for senescence mortality 
   param$k.sm =0.2     # constant for senescence mortality 
   
@@ -685,7 +686,7 @@ sizeparam<-function(equilibrium=F, dx=0.1,xmin=-12,xmax=6,xmin.consumer.u=-7,xmi
   
   
   return(param)
-  
+
 }#end sizeparam function
 
 
@@ -930,4 +931,8 @@ optimizeYield <- function(params,com,pp=pp, sst=sst, sft=sft, U_mat=U, V_mat=V,s
   return(list(result,com))
   
 }
+
+
+
+
 
