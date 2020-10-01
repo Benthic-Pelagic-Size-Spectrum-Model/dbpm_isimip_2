@@ -8,8 +8,6 @@ library(rnaturalearth)
 library(patchwork)
 library(lubridate)
 
-var <- c("tpb", "tcb", "bp30cm", "bp30to90cm", "bp90cm")
-
 mollCRS <- CRS("+proj=moll +lon_0=0 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs")
 mollCRS_no <- 54009
 
@@ -72,7 +70,7 @@ plotGlobalChange <- function(all, tit, w_sf, clim){
                          midpoint = 0,
                          low = "red",
                          mid = "white",
-                         high = "blue",
+                         high = "royalblue1",
                          position = "right",
                          na.value = "grey80",
                          guide = "colourbar",
@@ -161,7 +159,11 @@ plotTimeseries <- function(all, tit){
   if(length(all)==1){
     date = seq(as.Date("1950-1-1"), as.Date("2100-12-1"), by = "months")
   } # theis is for the picontrol case....  
+  
+  # date for models that have the right year/months ...: 
+  date = seq(as.Date("1950-1-1"), as.Date("2100-12-1"), by = "months")
   length(date) # lost with date..... need to check 
+  ncol(df)
   date = as.character(date)
   colnames(df)<-c("x","y",date)
   
@@ -229,6 +231,8 @@ plotTimeseries <- function(all, tit){
 # Download and process world outline
 world <- ne_countries(scale = "medium", returnclass = "sf")
 world_sf <- st_transform(world, crs = st_crs(robCRS)) # Convert to different CRS
+
+##### working code for dbpm ----
 
 #for(v in 1:length(var)){
   
@@ -367,7 +371,7 @@ v = 2
   gg_map2100_cmip5[[1]] <- plotGlobalYear(hist_rotate[[(150*12)-2]], str_replace(tit,"1950-2100 Change", "2100"), world_sf)
   rm(hist, all,hist_rotate)
   
-  ## ssp585 # change file! 
+  ## ssp585
   hist <- stack("/../../rd/gem/private/fishmip_outputs/aug_2017/netcdf/dbpm_ipsl-cm5a-lr_rcp85_no-fishing_no-oa_tcb.nc")
   tit <- paste0("IPSL SSP585 ",var[v]," (1950-2100 Change CMIP5)")
   # convert long 0:360 to -180:180 
