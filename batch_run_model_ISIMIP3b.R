@@ -29,9 +29,10 @@ source('runmodel_yearly.R')
 # output_files_location = output_loc
 
 ### protocols requiring spin up ----
+
 # for(i in 1:length(esms)){ # Loop over esms
   
-  # i = 2
+  i = 2
   curr_esm <- esms[i]
   
   load(list.files(path=paste("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/", curr_esm, '/',  sep = ""), pattern = "*depth*", full.names = TRUE)) # Load esm depth file
@@ -41,7 +42,9 @@ source('runmodel_yearly.R')
     # historical saved weekly outputs + spin up = 4.9T, 4 days to run (but on 25 cores)
     # picontrol saved montly outputs = 340G, 2.5 days to run on 45 cores  
   
-    # j = 1
+    # new runs without temp effect on senescenace:
+    # historical: need to run separately as you are also saving growth 
+    j = 2
     
     curr_scen <- scenario[j]
     
@@ -81,7 +84,7 @@ for(i in 1:length(esms)){ # Loop over esms
     
     # ssp126 saved weekly outputs starting from last historical week = 13 h to run; 117G  
     # ssp585 saved weekly outputs starting from last historical week = 12 h to run; 117G 
-    # j = 4 
+    j = 4 
     
     curr_scen <- scenario[j]
     
@@ -131,17 +134,24 @@ head(inputs_h)
 head(inputs_p)
     
 ### explore inputs/outputs and time steps difference ---- 
-inputs_h <- readRDS("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/IPSL-CM6A-LR/picontrol/grid_1_IPSL-CM6A-LR_picontrol.rds")
-inputs_h<-inputs_h$ts 
+inputs_h <- readRDS("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/IPSL-CM6A-LR/ssp585/grid_1_IPSL-CM6A-LR_ssp585.rds")
+inputs_h <- inputs_h$ts 
 dim(inputs_h)[1] # time dimention
 7917/48 # historical 164.93 year meaning that 3 weeks are left out of 165 years (7920/48 = 165)
 12045/48 # picontrol 250.9375 year meaning that 3 weeks are left out of 251 years (12048/48 = 251)
 12045/4 # picontrol 3011.25 months (as I save monthy...) - 3 weeks are left out of 3012 months
-result_set<-readRDS("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/IPSL-CM6A-LR/picontrol/dbpm_output_all_1_picontrol.rds")
+4125/48 # ssp585 is 85.93 year - same as per historical - it should be 4128/48
+result_set<-readRDS("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/IPSL-CM6A-LR/ssp585/dbpm_output_all_1_ssp585.rds")
 output_h<-result_set$U
 dim(output_h)[2] # time dimention
+1980/12 # historical and saved monthly 
 22318 - (300*48) # leave spin up out - one time step more than inputs  
 3012 # picontrol saved months (spin up already left out) - here it's OK becasue when I save monthly I save the 1st week of each month (the 0.25 above becomes output for the last month)
+1032/12 # ssp585 output dimentsion is ok but last time step for class 0-90 is NA 
+
+# compate inputs with outputs 
+output_h[,1031:1032]
+inputs_h[dim(inputs_h)[1],]  # all inputs are ok for last time dimention (first week of last year)
 
 ### check time dimention of outputs in historical ----
 # find grids for which result_set$notrun == TRUE in historical run, hence with problems when calculting initila abundance for ssp runs (last step of historical) and with problems with isave when creating output variables 
@@ -166,17 +176,27 @@ library(dplyr)
 library(tidyr)
 library(ggplot2)
 
-result_set<-readRDS("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/IPSL-CM6A-LR/ssp126/dbpm_output_all_3_ssp126.rds") 
-result_set_h<-readRDS("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/IPSL-CM6A-LR/historical/dbpm_output_all_3_historical.rds") 
+result_set<-readRDS("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/IPSL-CM6A-LR/ssp585/dbpm_output_all_1_ssp585.rds") 
+result_set_h<-readRDS("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/IPSL-CM6A-LR/historical/dbpm_output_all_1_historical.rds") 
 
-sum(result_set_h$V[,22317]) # this should be the starting abundance for the ssp126 run 
+dim(result_set_h$V)
+sum(result_set_h$V[,1980]) # this should be the starting abundance for the ssp126 run 
+dim(result_set$V)
 sum(result_set$V[,1]) # this should be the second time step in V (the first being the the abundance above, but not saved)
 
-sum(result_set_h$U[,22317])
+sum(result_set_h$U[,1980])
+sum(U.initial)
 sum(result_set$U[,1])
+
+# if you anly want to plot historical ....
+# result_set<-result_set_h
 
 addBin<-result_set$x # rows
 addCol<-c(seq(1, ncol(result_set$U)),"bin")
+
+result_set$V[,1031:1032]
+result_set$U[,1031:1032] # this is strange - it's like the pp inputs are not available for this month .... ! 
+
 
 result_partial <- as_data_frame(result_set$U)
 result_partial$bin <-addBin
@@ -202,7 +222,7 @@ result_partial<-result_partial %>%
   gather(trait, bio, -c(bin, step) )
 
 length(unique(result_partial$step))
-filter(result_partial, step == length(unique(result_partial$step))-1)
+filter(result_partial, step == length(unique(result_partial$step)))
 
 # spectrum 
 ss<-filter(result_partial, bio>0, trait %in% c("bioU", "bioV"))
