@@ -113,9 +113,10 @@ rungridsep <- function(igrid
     # isave <- seq(from=300*48, to=((dim(inputs$ts)[1])+1), by = 1) # save outputs weekly (but cut spinup)
     
     # CN: make sure you are not saving the last time dimention of the U, V and W matrices 
-    # these matrices in project() are built as U[,Neq+1] and hence have 1 time step more than the inputs  
-    isave <- seq(from=300*48, to=((dim(inputs$ts)[1])), by = 4) # not sure why this is to ...+1 above ?! 
-
+    # these matrices in project() are built as U[,Neq+1] and hence have 1 time step more than the inputs 
+    # also you should start after spinup and finish when inputs finish (including start and end) 
+    isave <- seq(from=(300*48)+1, to=((dim(inputs$ts)[1])), by = 4) # not sure why this was set up that way 
+    
     ## CHECK IF MODEL HAS CRASHED, IF IT HAS, 10X MORE STEPS AND RUN AGAIN
     # CN in this case, we do the same as for the function above but we increase the time step resolution (run more in-between input values)
   
@@ -207,7 +208,7 @@ rungridsep <- function(igrid
         # isave <- seq(from=300*480+2, to=((dim(inputs$ts)[1])+1), by = 480)
         # CN save monthly 
         isave <- seq(from=300*480+2, to=((dim(inputs$ts)[1])+1), by = 40)
-        isave <- seq(from=300*480+2, to=((dim(inputs$ts)[1])), by = 40) # Cn  see above 
+        isave <- seq(from=(300*480)+1, to=((dim(inputs$ts)[1])), by = 40) # CN  see above 
         
         }
     
@@ -290,7 +291,7 @@ rungridsep <- function(igrid
           # isave <- seq(from=2, to=((dim(inputs$ts)[1])+1), by = 480)
           # CN save monthly 
           isave <- seq(from=2, to=((dim(inputs$ts)[1])+1), by = 40)
-          isave <- seq(from=2, to=((dim(inputs$ts)[1])), by = 40) # Cn see above 
+          isave <- seq(from=1, to=((dim(inputs$ts)[1])), by = 40) # CN see above - here you are saving the first time step which is spin up and have overwritten the first time step  
         }
       }
   
@@ -369,8 +370,8 @@ rungridsep <- function(igrid
     
       result_partial<-list(U = result_set$U[,isave], # size class X time
                             V = result_set$V[,isave], 
-                            # GGU = result_set$GG.u[,isave], # only if historical 
-                            # GGV = result_set$GG.v[,isave], # only if historical 
+                            GGU = result_set$GG.u[,isave], # only if historical 
+                            GGV = result_set$GG.v[,isave], # only if historical 
                             W = result_set$W[isave], # time 
                             x = result_set$params$x, # size class in log10  
                             lat = result_set$params$lat, 
@@ -589,7 +590,8 @@ rungridsep_ssp <- function(igrid
     # length(seq(from=2, to=((dim(inputs$ts)[1])+1), by = 1)) # weekly 
     # length(seq(from=2, to=((dim(inputs$ts)[1])+1), by = 48)) # yearly
     isave <- seq(from=2, to=((dim(inputs$ts)[1])+1), by = 4) # montly 
-    isave <- seq(from=2, to=((dim(inputs$ts)[1])), by = 4) # montly, but excluding last time step of outputs as they have one time step more than inputs - see above 
+    isave <- seq(from=1, to=((dim(inputs$ts)[1])), by = 4) # montly, but considering the fistrst time step (which is not the initial values) 
+    # and excluding last time step of outputs, which have one time step more than inputs - see above 
     # length(isave) # 1032 if monthly
     # chack saved variable: 
     # U = result_set$U[,isave]
@@ -677,7 +679,7 @@ rungridsep_ssp <- function(igrid
       # save results (no spin up this time) 
       # CN 40 instead of 4 (480 if yearly and 10 if weekly) beacsue we expanded the time component of the inputs
       isave <- seq(from=2, to=((dim(inputs$ts)[1])+1), by = 40)  
-      isave <- seq(from=2, to=((dim(inputs$ts)[1])), by = 40) #  see above   
+      isave <- seq(from=1, to=((dim(inputs$ts)[1])), by = 40) #  see above   
       # length(isave) # 1032 
       
     }
@@ -700,6 +702,7 @@ rungridsep_ssp <- function(igrid
                            lon = result_set$params$lon,
                            depth = result_set$params$depth, 
                            dx = result_set$params$dx) 
+      
       # save 
       output_filename <- paste(output_files_location, "dbpm_output_all_", igrid, '_', protocol, '.rds', sep = "") 
       saveRDS(result_partial, file = output_filename, compress = FALSE)

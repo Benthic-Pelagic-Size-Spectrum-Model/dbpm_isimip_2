@@ -43,13 +43,16 @@ source('runmodel_yearly.R')
     # picontrol saved montly outputs = 340G, 2.5 days to run on 45 cores  
   
     # new runs without temp effect on senescenace:
-    # historical: need to run separately as you are also saving growth 
+    # historical: need to run separately as you are also saving growth - and picontrol is not necessary at this stage. 
+    # note that you can either use the dynamics_sizebased_model_function.R or the dynamics_sizebased_model_function_TempOnSenescence.R in runmodel_yearly.R  
     j = 2
     
     curr_scen <- scenario[j]
     
     input_loc <- paste("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/", curr_esm, "/", curr_scen, "/", sep = "")
     output_loc <- paste("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/", curr_esm, "/", curr_scen, "/", sep = "") 
+    
+    # go in runmodel_yearly.r and run from there if you want to tri 1 gridcell only
     
     # set up cluster
     numcores= 45 # gem48 has 48 cpu 
@@ -116,22 +119,12 @@ for(i in 1:length(esms)){ # Loop over esms
   }
 }
 
-### try 1 model, 1 scenario, 1 grid cell first ----
-curr_esm <- esms[2]
-load(list.files(path=paste("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/", curr_esm, '/',  sep = ""), pattern = "*depth*", full.names = TRUE)) # Load esm depth file
-curr_scen <- scenario[2]
-input_loc <- paste("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/", curr_esm, "/", curr_scen, "/", sep = "")
-output_loc <- paste("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/", curr_esm, "/", curr_scen, "/", sep = "") 
-# go in runmodel_yearly.r and run from there 
     
 ### explore historical and picontrol inputs and consideration for spin up ----
 inputs_h <- readRDS("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/IPSL-CM6A-LR/historical/grid_1_IPSL-CM6A-LR_historical.rds")
 inputs_h<-inputs_h$ts 
 inputs_p <- readRDS("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/IPSL-CM6A-LR/picontrol/grid_1_IPSL-CM6A-LR_picontrol.rds")
 inputs_p<-inputs_p$ts
-
-head(inputs_h)
-head(inputs_p)
     
 ### explore inputs/outputs and time steps difference ---- 
 inputs_h <- readRDS("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/IPSL-CM6A-LR/ssp585/grid_1_IPSL-CM6A-LR_ssp585.rds")
@@ -155,17 +148,6 @@ inputs_h[dim(inputs_h)[1],]  # all inputs are ok for last time dimention (first 
 
 ### check time dimention of outputs in historical ----
 # find grids for which result_set$notrun == TRUE in historical run, hence with problems when calculting initila abundance for ssp runs (last step of historical) and with problems with isave when creating output variables 
-ptm=proc.time()
-options(warn=-1)
-for (igrid in 1:10){ # 41328 cell takes 7 h to run. 
-  curr_grid_output <- list.files(path = "/../../rd/gem/private/fishmip_outputs/ISIMIP3b/IPSL-CM6A-LR/historical/", pattern = paste("dbpm_output_all_", igrid, '_', "historical", '.rds', sep = ""), full.names = TRUE)
-  result_set<-readRDS(curr_grid_output)
-  output_h<-result_set$U
-  # if (dim(output_h)[2] != 22318) {print(paste(igrid, dim(output_h)[2]))} # time dimention # 22318 is the OK one, if bigger it means result_ser$notrun = TRUE
-  print(paste(igrid, dim(output_h)[2]))
-  rm(result_set, output_h)
-}
-print((proc.time()-ptm)/60.0)
 # other option: in terminal find files bigger than 124M (the size of a file with time dimention 22318): find . type- f -size +124M
 # ./dbpm_output_all_21747_historical.rds is the only one with larger size 223162 (result_set$notrun = T, option 1)
 # igrid = 21747
@@ -184,7 +166,7 @@ sum(result_set_h$V[,1980]) # this should be the starting abundance for the ssp12
 dim(result_set$V)
 sum(result_set$V[,1]) # this should be the second time step in V (the first being the the abundance above, but not saved)
 
-sum(result_set_h$U[,1980])
+sum(result_set_h$U[,1978])
 sum(U.initial)
 sum(result_set$U[,1])
 
@@ -195,8 +177,7 @@ addBin<-result_set$x # rows
 addCol<-c(seq(1, ncol(result_set$U)),"bin")
 
 result_set$V[,1031:1032]
-result_set$U[,1031:1032] # this is strange - it's like the pp inputs are not available for this month .... ! 
-
+result_set$U[,1031:1032] # this is strange - it's like the pp inputs are not available for this month .... ! now should be fixed 
 
 result_partial <- as_data_frame(result_set$U)
 result_partial$bin <-addBin
