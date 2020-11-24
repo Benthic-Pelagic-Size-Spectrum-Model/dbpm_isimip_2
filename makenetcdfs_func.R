@@ -15,7 +15,7 @@ mknetcdf<-function(varname, protocol, inputpath, datapath, savetopath, grids, is
 
   # CN  trial 
   # varname = vars2make[1]
-  # protocol = prots[1]
+  # protocol = prots[2]
   # prot_full_name = prot_full_names[1]
   # inputpath = input_loc
   # datapath = output_loc
@@ -69,7 +69,7 @@ mknetcdf<-function(varname, protocol, inputpath, datapath, savetopath, grids, is
   # we changed name and acronisms
   # name <- paste(savetopath, protocol, "/dbpm_ipsl_", varname, "_global_annual.nc4", sep = "")
   name <- paste(savetopath, "/dbpm_ipsl_cm6a_lr_", "nobc_", protocol, "_nosoc_default_", "disaggregated_", varname, "_global_montly_", yearRange, ".nc4", sep = "") # according to protocol see below 
-  
+
   # nc_names <- c(name1, name2)
   
   # CN version
@@ -198,12 +198,12 @@ mknetcdf<-function(varname, protocol, inputpath, datapath, savetopath, grids, is
   
   var.def.nc(new_nc, varname, "NC_FLOAT", c('lon', 'lat', 'size','time')) # CN added size 
   # att.put.nc(new_nc, variable = varname, type = 'NC_CHAR', name = 'long_name', value = dbpm.variables$description[dbpm.variables$name==varname])
-  att.put.nc(new_nc, variable = varname, type = 'NC_CHAR', name = 'short_name', value = varname)
+  att.put.nc(new_nc, variable = varname, type = 'NC_CHAR', name = 'short_name', value = varname) 
   # att.put.nc(new_nc, variable = varname, type = 'NC_CHAR', name = 'units', value = dbpm.variables$units[dbpm.variables$name==varname])
   att.put.nc(new_nc, variable = varname, type = 'NC_FLOAT', name = 'missing_value', value = 1e20)
   var.put.nc(new_nc, varname, curr_array)
   
-  att.put.nc(new_nc, variable = "NC_GLOBAL", name = "author", type = "NC_CHAR", value = "Created by Camilla Novaglio, with help from Julia Blanchard, Ryan Heneghan, and Just Berkhout <camilla.novaglio@gmail.com>")
+  att.put.nc(new_nc, variable = "NC_GLOBAL", name = "author", type = "NC_CHAR", value = "Created by Camilla Novaglio, with help from Julia Blanchard, Ryan Heneghan, and Just Berkhout")
   att.put.nc(new_nc, variable = "NC_GLOBAL", name = "institution", type = "NC_CHAR", value = "Institute for Marine and Antarctic Studies")
   att.put.nc(new_nc, variable = "NC_GLOBAL", name = "date_created", type = "NC_CHAR", value = date())
   att.put.nc(new_nc, variable = "NC_GLOBAL", name = "comments", type = "NC_CHAR", value = "Model output for ISIMIP3b")
@@ -243,25 +243,53 @@ mknetcdf<-function(varname, protocol, inputpath, datapath, savetopath, grids, is
 #[ reached getOption("max.print") -- omitted 700991030 rows ]
 
 ###### aggregated outputs ----
-mknetcdf_agg<-function(varname, protocol, inputpath, datapath, savetopath, grids, other_param, yearRange){
+
+# be careful with this as if you change the order of the vars2make you will get wrong names.  
+dbpm.variables<-data.frame(name = vars2make, 
+                           description = c("Total Consumer Biomass Density",
+                                           "Total Pelagic Biomass Density", 
+                                           "Biomass Density of Small Pelagics <30cm",
+                                           "Biomass Density of Medium Pelagics >=30cm and <90cm",
+                                           "Biomass Density of Large Pelagics >=90cm",
+                                           "Total Demersal Biomass Density",
+                                           "Biomass Density of Small Demersals <30cm",
+                                           "Biomass Density of Medium Demersals >=30cm and <90cm",
+                                           "Biomass Density of Large Demersals >=90cm"))
+
+
+mknetcdf_agg<-function(varname, protocol, inputpath, datapath, savetopath, grids, other_param, isave, yearRange){
   
   # CN  trial 
-  # varname = vars2make[1]
-  # protocol = prots[4] 
+  # varname = vars2make[i]
+  # protocol = prots[j] 
   # inputpath = input_loc
   # datapath = output_loc
   # savetopath = save_loc
   # igrid = 1
-  # yearRange = yearRange[4]
+  # other_param = other_param
+  # isave = isave[[j]]
+  # yearRange = yearRange[j]
   
   ## Cut values and lat-lons for earth models 
   lon<- -180:179
   lat<- -89.5:89.5
-  t<-1:length(isave)
+  
+  # CN correct Matthias - BUT NEED TO RE-RUN the model using updated inputs - NO asked Ryan 
+  lon<- -179.5:179.5
+  lon<- -180:179 # back to before
+  lat<- 89.5:-89.5
+  
+  t<-1:length(isave) # this could simply be isave 
+  
+  # time starts from 1601 and is given in months - matthias fix
+  # add months since 1601 as this is the ISIMIP starting date convention    
+  if (yearRange == "2015_2100") {
+    months_since_1601 = ((2015-1601)*12) -1 # data in future starts in 2015 - it works in terms of year and month
+  }else {months_since_1601 = ((1850-1601)*12) -1} # data in historical starts in 1980
+  t<-t + months_since_1601
   
   # # storage for the gridded outputs for current variable 
   # var <- array(NA, dim = c(length(lon), length(lat), length(t)), dimnames = list(lon,lat,t))
-  # CN NOTE!!!!!!! : should this be 1e20 instead? 
   var <- array(1e20, dim = c(length(lon), length(lat), length(t)), dimnames = list(lon,lat,t))
   
   # get netcdf names
@@ -272,6 +300,9 @@ mknetcdf_agg<-function(varname, protocol, inputpath, datapath, savetopath, grids
   # soc-scenario = nosoc # CN not sure about this! just using Ryan def (COULD BE 'nat' as in no fishing)
   # sens-scenario = default
   
+  # fix Matthias 
+  nc_names <- paste(savetopath, protocol,"/dbpm_ipsl-cm6a-lr_", "nobc_", protocol, "_nat_default_",varname, "_global_monthly", yearRange, ".nc", sep = "") 
+ 
   # pb = txtProgressBar(min = 0, max = length(grids), initial = 1, style = 3) # Initial progress bar
 
   for (igrid in grids) {
@@ -293,9 +324,11 @@ mknetcdf_agg<-function(varname, protocol, inputpath, datapath, savetopath, grids
       # CN calculate aggregated outputs here (copied/moved from inside models - see comments in batch_run_create_output_netcdf.r) 
       # U = pelagic
       # V = demeral 
-      # W = detritus 
-      TotalUbiomass <- apply(result_set$U[other_param$ref:other_param$Nx,other_param$isave]*other_param$dx*10^other_param$x[other_param$ref:other_param$Nx],2,sum) 
-      TotalVbiomass <- apply(result_set$V[other_param$ref.det:other_param$Nx,other_param$isave]*other_param$dx*10^other_param$x[other_param$ref.det:other_param$Nx],2,sum) 
+      # W = detritus
+      # note that isave is unnecessary with new model outputs all run montly 
+      # dim(result_set$U)
+      TotalUbiomass <- apply(result_set$U[other_param$ref:other_param$Nx,isave]*other_param$dx*10^other_param$x[other_param$ref:other_param$Nx],2,sum) 
+      TotalVbiomass <- apply(result_set$V[other_param$ref.det:other_param$Nx,isave]*other_param$dx*10^other_param$x[other_param$ref.det:other_param$Nx],2,sum) 
       # TotalW <- result_set$W[other_param$isave]
       # consumer_spec <- result_set$U[other_param$ref:other_param$Nx,other_param$isave] + result_set$V[other_param$ref.det:other_param$Nx,other_param$isave]
     
@@ -375,39 +408,49 @@ mknetcdf_agg<-function(varname, protocol, inputpath, datapath, savetopath, grids
 
   curr_array = var 
   # curr_array[curr_array > 10000] = NA # CN: don't know what this is 
-
-  new_nc <- create.nc(nc_names)
+  
+  new_nc <- create.nc(nc_names, format ="netcdf4")
   
   dim.def.nc(new_nc, 'lon', dimlength = length(lon)) 
   var.def.nc(new_nc, 'lon', 'NC_FLOAT', 'lon')
   var.put.nc(new_nc, 'lon', lon) # c(-179:179)) # CN 
   att.put.nc(new_nc, variable = 'lon', type = 'NC_CHAR', name = 'long_name', value = 'longitude')
-  att.put.nc(new_nc, variable = 'lon', type = 'NC_CHAR', name = 'units', value = 'degrees')
+  att.put.nc(new_nc, variable = 'lon', type = 'NC_CHAR', name = 'standard_name', value = 'longitude') # Matthias fix - add standard name 
+  att.put.nc(new_nc, variable = 'lon', type = 'NC_CHAR', name = 'units', value = 'degrees_east') # Matthias fix degrees_east instead of degrees
   att.put.nc(new_nc, variable = 'lon', type = 'NC_CHAR',  name = 'axis', value = 'X')
   
   dim.def.nc(new_nc, 'lat', dimlength = length(lat))
   var.def.nc(new_nc, 'lat', 'NC_FLOAT', 'lat')
   var.put.nc(new_nc, 'lat', lat) # c(-89.5:89.5))
   att.put.nc(new_nc, variable = 'lat', type = 'NC_CHAR', name = 'long_name', value = 'latitude')
+  att.put.nc(new_nc, variable = 'lat', type = 'NC_CHAR', name = 'standard_name', value = 'latitude') # Matthias fix - add standard name 
   att.put.nc(new_nc, variable = 'lat', type = 'NC_CHAR', name = 'units', value = 'degrees_north')
   att.put.nc(new_nc, variable = 'lat', type = 'NC_CHAR', name = 'axis', value = 'Y')
   
   dim.def.nc(new_nc, 'time', unlim = TRUE)
   var.def.nc(new_nc, 'time', 'NC_DOUBLE', 'time')
+  var.put.nc(new_nc, 'time', t) # matthias fix - specify time as per months since 1601
   att.put.nc(new_nc, variable = 'time', type = 'NC_CHAR', name = 'long_name', value = 'time')
-  att.put.nc(new_nc, variable = 'time', type = 'NC_CHAR', name = 'units', value = 'months since 1850-1-1 00:00:00')
-  att.put.nc(new_nc, variable = 'time', type = 'NC_CHAR', name = 'calendar', value = 'standard')
+  att.put.nc(new_nc, variable = 'time', type = 'NC_CHAR', name = 'standard_name', value = 'time') # Matthias fix - add standard name 
+  # att.put.nc(new_nc, variable = 'time', type = 'NC_CHAR', name = 'units', value = 'months since 1850-1-1 00:00:00')
+  att.put.nc(new_nc, variable = 'time', type = 'NC_CHAR', name = 'units', value = 'months since 1601-1-1 00:00:00') # Matthias fix 
+  # att.put.nc(new_nc, variable = 'time', type = 'NC_CHAR', name = 'calendar', value = 'standard')
+  att.put.nc(new_nc, variable = 'time', type = 'NC_CHAR', name = 'calendar', value = '360_day') # Matthias fix 
   att.put.nc(new_nc, variable = 'time', type = 'NC_CHAR', name = 'axis', value = 'T')
   
   var.def.nc(new_nc, varname, "NC_FLOAT", c('lon', 'lat','time'))
   # att.put.nc(new_nc, variable = varname, type = 'NC_CHAR', name = 'long_name', value = dbpm.variables.agg$description[dbpm.variables.agg$name==varname])
-  att.put.nc(new_nc, variable = varname, type = 'NC_CHAR', name = 'short_name', value = varname)
-  # att.put.nc(new_nc, variable = varname, type = 'NC_CHAR', name = 'units', value = dbpm.variables.agg$units[dbpm.variables.agg$name==varname]) # need to figure this out!
-  att.put.nc(new_nc, variable = varname, type = 'NC_CHAR', name = 'units', value = "g/m^2") 
-  att.put.nc(new_nc, variable = varname, type = 'NC_FLOAT', name = 'missing_value', value = 1e20)
+  # att.put.nc(new_nc, variable = varname, type = 'NC_CHAR', name = 'short_name', value = varname) # # fix Matthias - short_name not needed
+  # att.put.nc(new_nc, variable = varname, type = 'NC_CHAR', name = 'units', value = dbpm.variables.agg$units[dbpm.variables.agg$name==varname]) 
+  att.put.nc(new_nc, variable = varname, type = 'NC_CHAR', name = 'long_name', value = as.character(dbpm.variables[which(dbpm.variables==varname), "description" ])) # Matthias fix 
+  att.put.nc(new_nc, variable = varname, type = 'NC_CHAR', name = 'units', value = "g m-2") 
+  # att.put.nc(new_nc, variable = varname, type = 'NC_FLOAT', name = 'missing_value', value = 1e20) # Matthias fix
+  att.put.nc(new_nc, variable = varname, type = 'NC_FLOAT', name = '_FillValue', value = 1e20)
   var.put.nc(new_nc, varname, curr_array)
   
-  att.put.nc(new_nc, variable = "NC_GLOBAL", name = "author", type = "NC_CHAR", value = "Created by Camilla Novaglio, with help from Julia Blanchard, Ryan Heneghan, and Just Berkhout <camilla.novaglio@gmail.com>")
+  att.put.nc(new_nc, variable = "NC_GLOBAL", name = "author", type = "NC_CHAR", value = "Created by Camilla Novaglio, with help from Julia Blanchard, Ryan Heneghan, and Just Berkhout")
+  # Fix Matthias
+  att.put.nc(new_nc, variable = "NC_GLOBAL", name = "contact", type = "NC_CHAR", value = "camilla.novaglio@utas.edu.au; Julia.blanchard@utas.edu.au")
   att.put.nc(new_nc, variable = "NC_GLOBAL", name = "institution", type = "NC_CHAR", value = "Institute for Marine and Antarctic Studies")
   att.put.nc(new_nc, variable = "NC_GLOBAL", name = "date_created", type = "NC_CHAR", value = date())
   att.put.nc(new_nc, variable = "NC_GLOBAL", name = "comments", type = "NC_CHAR", value = "Model output for ISIMIP3b")
