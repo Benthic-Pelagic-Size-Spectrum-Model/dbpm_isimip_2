@@ -64,6 +64,9 @@ sizemodel<-function(params,ERSEM.det.input=F,U_mat,V_mat,W_mat,temp.effect=T,eps
     # V.init = params$V.init
     # W.init = params$W.init
     # equilibrium = params$equilibrium
+    # use.init = TRUE # this is if you are running ssps 
+    # temp.effect = T
+    # ERSEM.det.input = FALSE
   
     #---------------------------------------------------------------------------------------
     # Model for a dynamical ecosystem comprised of: two functionally distinct size spectra (predators and detritivores), size structured primary producers and an unstructured detritus resource pool. 
@@ -185,7 +188,6 @@ sizemodel<-function(params,ERSEM.det.input=F,U_mat,V_mat,W_mat,temp.effect=T,eps
     
     #empty vector to hold fishing mortality rates at each size class
     Fvec.v = Fvec.u = rep(0,length(x))
-    
     
     
     #lookup tables for terms in the integrals which remain constant over time
@@ -528,12 +530,10 @@ sizemodel<-function(params,ERSEM.det.input=F,U_mat,V_mat,W_mat,temp.effect=T,eps
     
     return(list(U=U[,],GG.u=GG.u[,],PM.u=PM.u[,],V=V[,],GG.v=GG.v[,],PM.v=PM.v[,],Y.u=Y.u[,],Y.v=Y.v[,],W=W[], params=params))
     
-    
     # return(list(U=U[,Neq+1],GG.u=GG.u[,Neq],PM.u=PM.u[,Neq],V=V[,Neq+1],GG.v=GG.v[,Neq],PM.v=PM.v[,Neq],Y=Y[,Neq],W=W[Neq+1], params=params))
     
   })  
   # end with(params)
-  
   
 }#end size-based model function
 

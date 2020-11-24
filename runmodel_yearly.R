@@ -17,7 +17,7 @@ rungridsep <- function(igrid
   
   # CN trial 
   # where is igrid specified? in the loop that calls this function 
-  # igrid <-1
+  # igrid <- 1
   # gcm = curr_esm 
   # protocol = curr_scen
   # output = "partial"
@@ -434,7 +434,7 @@ rungridsep_ssp <- function(igrid
                        ,output_historical_location) {
   
   # CN trial 
-  # igrid <-1
+  # igrid <- 22430
   # gcm = curr_esm 
   # protocol = curr_scen
   # output = "partial"
@@ -574,6 +574,13 @@ rungridsep_ssp <- function(igrid
     
     result_set$notrun <- ifelse(any(result_set$U[150,]=="NaN")==FALSE, FALSE, TRUE)
     
+    # fix ssp585 cell 22430 as outputs are given as characters...
+    # U<-result_set$U
+    # dim(result_set$U)
+    # U<-sapply(U, FUN=as.numeric)
+    # U <- matrix(data=U, ncol=dim(result_set$U)[2], nrow= dim(result_set$U)[1])
+    # result_set$U<-U
+    
     # check if initial abundance have been considered 
     # sum(result_set$U[,1])
     # sum(U.initial)
@@ -702,6 +709,9 @@ rungridsep_ssp <- function(igrid
                            lon = result_set$params$lon,
                            depth = result_set$params$depth, 
                            dx = result_set$params$dx) 
+      
+      
+      result_partial$U[,1]
       
       # save 
       output_filename <- paste(output_files_location, "dbpm_output_all_", igrid, '_', protocol, '.rds', sep = "") 
