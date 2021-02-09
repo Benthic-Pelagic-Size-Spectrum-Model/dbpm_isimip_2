@@ -68,7 +68,7 @@ mknetcdf<-function(varname, protocol, inputpath, datapath, savetopath, grids, is
   # we don't need to differentiate between clim and others
   # we changed name and acronisms
   # name <- paste(savetopath, protocol, "/dbpm_ipsl_", varname, "_global_annual.nc4", sep = "")
-  name <- paste(savetopath, "/dbpm_ipsl_cm6a_lr_", "nobc_", protocol, "_nosoc_default_", "disaggregated_", varname, "_global_montly_", yearRange, ".nc4", sep = "") # according to protocol see below 
+  name <- paste(savetopath, "/dbpm_ipsl_cm6a_lr_", "nobasd_", protocol, "_nosoc_default_", "disaggregated_", varname, "_global_montly_", yearRange, ".nc4", sep = "") # according to protocol see below 
 
   # nc_names <- c(name1, name2)
   
@@ -296,12 +296,12 @@ mknetcdf_agg<-function(varname, protocol, inputpath, datapath, savetopath, grids
   # nc_names <- paste(savetopath, protocol, "/dbpm_ipsl_", "agg_",varname, "_global_annual.nc4", sep = "") # /dbpm_cesm1-bgc_nobc_rcp85_nosoc_co2_
   nc_names <- paste(savetopath, protocol,"/dbpm_ipsl_cm6a_lr_", "nobc_", protocol, "_nat_default_",varname, "_global_montly_", yearRange, ".nc4", sep = "") 
   # according to protocol - need to change year for each protocol in description of netcdf below 
-  # bias-adjustment = nobc 
+  # bias-adjustment = nobc; matthias correction: nobasd
   # soc-scenario = nosoc # CN not sure about this! just using Ryan def (COULD BE 'nat' as in no fishing)
   # sens-scenario = default
   
   # fix Matthias 
-  nc_names <- paste(savetopath, protocol,"/dbpm_ipsl-cm6a-lr_", "nobc_", protocol, "_nat_default_",varname, "_global_monthly", yearRange, ".nc", sep = "") 
+  nc_names <- paste(savetopath, protocol,"/dbpm_ipsl-cm6a-lr_", "nobasd_", protocol, "_nat_default_",varname, "_global_monthly_", yearRange, ".nc", sep = "") 
  
   # pb = txtProgressBar(min = 0, max = length(grids), initial = 1, style = 3) # Initial progress bar
 
@@ -444,7 +444,7 @@ mknetcdf_agg<-function(varname, protocol, inputpath, datapath, savetopath, grids
   # att.put.nc(new_nc, variable = varname, type = 'NC_CHAR', name = 'units', value = dbpm.variables.agg$units[dbpm.variables.agg$name==varname]) 
   att.put.nc(new_nc, variable = varname, type = 'NC_CHAR', name = 'long_name', value = as.character(dbpm.variables[which(dbpm.variables==varname), "description" ])) # Matthias fix 
   att.put.nc(new_nc, variable = varname, type = 'NC_CHAR', name = 'units', value = "g m-2") 
-  # att.put.nc(new_nc, variable = varname, type = 'NC_FLOAT', name = 'missing_value', value = 1e20) # Matthias fix
+  att.put.nc(new_nc, variable = varname, type = 'NC_FLOAT', name = 'missing_value', value = 1e20) # Matthias fix
   att.put.nc(new_nc, variable = varname, type = 'NC_FLOAT', name = '_FillValue', value = 1e20)
   var.put.nc(new_nc, varname, curr_array)
   

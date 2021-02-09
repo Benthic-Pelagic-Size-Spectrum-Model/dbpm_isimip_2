@@ -139,7 +139,7 @@ source("makenetcdfs_func.R")
 
 #### for aggregated ---- 
 
-for(i in 1:length(vars2make)){
+#for(i in 1:length(vars2make)){
     i = 1
   
   for(j in 2:length(prots)){
@@ -158,7 +158,7 @@ for(i in 1:length(vars2make)){
     # tcb OK for the 3 protocols  
     
     # Fix errors as per Matthias 
-    j = 3
+    # j = 3
     
     ptm=proc.time()
     options(warn=-1)
@@ -168,7 +168,7 @@ for(i in 1:length(vars2make)){
     
   }
     
-}
+#}
 
 
 #### check ----
