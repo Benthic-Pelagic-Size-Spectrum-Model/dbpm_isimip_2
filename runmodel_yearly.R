@@ -1,5 +1,5 @@
-# source("./dbpm-ryan/size-based-models/dynamic_sizebased_model_functions.R", chdir = TRUE)
-source("./size-based-models/dynamic_sizebased_model_functions.R", chdir = TRUE) # CN change dir 
+
+source("./size-based-models/dynamic_sizebased_model_functions.R", chdir = TRUE) # CN change dir
 
 ## This script runs the DBPM input with inputs updating yearly. Script processes weekly inputs
 ## to be yearly inputs, interpolating between yearly input in the same way as weekly inputs
@@ -18,12 +18,11 @@ rungridsep <- function(igrid
   # CN trial 
   # where is igrid specified? in the loop that calls this function 
   # igrid <- 1
-  # gcm = curr_esm 
+  # gcm = curr_esm
   # protocol = curr_scen
   # output = "partial"
-  # input_files_location = input_loc 
-  # output_files_location = output_loc
-
+  # input_files_location = input_loc
+  # output_files_location = output_loc_trial
   
   # we need to run the model with time-varying inputs   
   # the largest dt of the model is a monthly time step (Q-F was daily...which may still be needed) 

@@ -4,9 +4,8 @@
 # in Julia's older version, this codes is included in runmodel_calls.r but it's very different!
 
 #### STEP 3: RUN THE MODEL
-# source("./DBPM/") # Set to the base folder for the DBPM runs
+# Set to the base folder for the DBPM runs
 setwd("/data/home/camillan/dbpm")
-#  setwd("/Users/nov017/R-projects/dbpm") # local 
 
 rm(list=ls())
 
@@ -52,8 +51,6 @@ source('runmodel_yearly.R')
     input_loc <- paste("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/", curr_esm, "/", curr_scen, "/", sep = "")
     output_loc <- paste("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/", curr_esm, "/", curr_scen, "/", sep = "") 
     
-    # go in runmodel_yearly.r and run from there if you want to tri 1 gridcell only
-    
     # set up cluster
     numcores= 45 # gem48 has 48 cpu 
     
@@ -76,7 +73,7 @@ source('runmodel_yearly.R')
     
 ### projections protocols ssp ----
     
-for(i in 1:length(esms)){ # Loop over esms
+# for(i in 1:length(esms)){ # Loop over esms
   
   i = 2 # ipsl 
   curr_esm <- esms[i]
@@ -121,44 +118,33 @@ for(i in 1:length(esms)){ # Loop over esms
   
     stopCluster(cl)
   }
-}
+# }
 
-### explore effect of senescence ----
-# run 1 grid call and  compare with/without senescence 
-source('runmodel_yearly.R')  
-i = 2 # ipsl 
-curr_esm <- esms[i]
-load(list.files(path=paste("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/", curr_esm, '/',  sep = ""), pattern = "*depth*", full.names = TRUE)) # Load esm depth file
+### explore effect of senescence and fix 'bug' which increases biomass ----
 
-# need to run  all scenarios historical, spp126 and spp585 as these are requiresd for the plotting function below 
-j = 4 # spp585
-curr_scen <- scenario[j]
-input_loc <- paste("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/", curr_esm, "/", curr_scen,"/", sep = "")
-output_loc <- paste("/../../rd/gem/private/fishmip_outputs/temp_trials/", curr_esm, "/", curr_scen,"/", sep = "")
-output_loc_hist <- paste("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/", curr_esm, '/historical', sep = "")
-input_loc_hist <- paste("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/", curr_esm, '/historical', sep = "")
-
-grids<-1
-
-# the  rungridsep_ssp() calls either functions below - but can call from here 
-# source("./size-based-models/dynamic_sizebased_model_functions.R", chdir = TRUE) 
-# source("./size-based-models/dynamic_sizebased_model_functions_TempOnSenescence.R", chdir = TRUE) 
-result_set<-rungridsep_ssp(igrid = grids,
-                           gcm = curr_esm,
-                           protocol = curr_scen,
-                           output = "partial",
-                           input_files_location = input_loc, 
-                           output_files_location = output_loc, 
-                           output_historical_location = output_loc_hist,
-                           input_historical_location = input_loc_hist)
-
-# run plotting function - move somewhere? 
+rm(list=ls())
+    
 library(dplyr)
 library(tidyverse)
 library(ggplot2)
 library(patchwork)
 
-plot_grid<-function(result_set_h, 
+# the function below 
+    # uploaads outputs from 1 (specified) grid cell,
+    # runs the model for the same grid cell using a different dynamic_sizebased_model_functions.R 
+    # saves the new run in output_loc_trial (rd/gem/private/fishmip_outputs/temp_trials/) which is different from the path to the original runs, 
+    # so you are not overwriting original files. 
+    # plots biomass trends, size-spcrea and growth for the 2 (original ad new) runs 
+# Steps 
+    # 1 - delete files in temp_trials otherwise the function sees taht the grid cell has already been run 
+    # 2 - specify the dynamic_sizebased_model_functions.R that you want ot use and commnet the dynamic_sizebased_model_functions.R inside runmodel_yearly.r
+    
+compare_senarios<-function(grids){
+    
+  # trial 
+  # grids = 23000
+  
+  plot_grid<-function(result_set_h, 
                     result_set_585,
                     result_set_126, 
                     input_h,
@@ -266,7 +252,7 @@ plot_grid<-function(result_set_h,
   plot_temp<-ggplot(temp, aes(x=step, y=sst, color = period))+
     geom_smooth()
   
-  plot_trend<-plot_tcb/plot_temp
+  # plot_trend<-plot_tcb/plot_temp
   
   # growth from historical  
   GU<-as_data_frame(result_set_h$GGU) %>% 
@@ -283,108 +269,165 @@ plot_grid<-function(result_set_h,
     filter(bin >= -7)
   
   # try your code
-  plot_growth<-ggplot(filter(growth, step == max(as.numeric(step))), aes(x=bin, y=log10(growth), group = trait, color = trait))+
+  plot_growth<-ggplot(filter(growth, step == max(as.numeric(step))-1), aes(x=bin, y=log10(growth), group = trait, color = trait))+
     geom_line()+
     facet_wrap(~trait, ncol=2)
   
-  # try  analyseoutput
-  x = result_set_h$x
-  dx = result_set_h$dx
-  Nx = length(x)
-  x1 = -7
-  x1.det = -7
-  xmin = -12
-  ref = ((x1-xmin)/dx)+1
-  ref.det = ((x1.det-xmin)/dx)+1 
-  xmax = 6
-  
-  params = list (
-    # isave = isave, 
-    x = x, 
-    dx = dx, 
-    Nx = Nx, 
-    x1 = x1, 
-    x1.det = x1.det, 
-    xmin = xmin, 
-    ref = ref, 
-    ref.det = ref.det,
-    xmax = xmax)
-  
-  # res<-result_set_h
-  
-  # plot(params$x[params$ref:params$Nx],res$GGU[params$ref:params$Nx,1980],log="y", type = "l", col = "blue", ylab= "Relative growth rate",
-  #      xlab = "Size") # ylim = c(0.001,1000), xlim=c(params$x1.det,params$xmax)
-  
-  # whty are they  different? becasue in plot() the data is in log scale but the values on the y  axis are not...  
-  # trial<-growth %>% filter(step == max(as.numeric(step)), trait == "GU")
-  # log10(trial$growth)
-  # log(res$GGU[params$ref:params$Nx,1980])
-  
-  return(list(plot_spectrum = plot_spectrum, plot_trend = plot_trend, plot_growth = plot_growth)) 
+  return(list(plot_spectrum = plot_spectrum, plot_tcb = plot_tcb, plot_temp = plot_temp, plot_growth = plot_growth, biomass_time = biomass_time, temp = temp, biomass = biomass, growth = growth)) 
   
 }
 
 
-# inputs 
-input_585<-readRDS("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/IPSL-CM6A-LR/ssp585/grid_1_IPSL-CM6A-LR_ssp585.rds")
-input_126<-readRDS("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/IPSL-CM6A-LR/ssp126/grid_1_IPSL-CM6A-LR_ssp126.rds")
-input_h<-readRDS("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/IPSL-CM6A-LR/historical/grid_1_IPSL-CM6A-LR_historical.rds")  
+  # inputs same for both scenarios (no senescence and senescence)
+  input_585<-readRDS(paste0("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/IPSL-CM6A-LR/ssp585/grid_",grids,"_IPSL-CM6A-LR_ssp585.rds"))
+  input_126<-readRDS(paste0("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/IPSL-CM6A-LR/ssp126/grid_",grids,"_IPSL-CM6A-LR_ssp126.rds"))
+  input_h<-readRDS(paste0("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/IPSL-CM6A-LR/historical/grid_",grids,"_IPSL-CM6A-LR_historical.rds"))  
 
-# original NO temp effect on senescence: 
-# try grid cell: 22430
-result_set_585<-readRDS("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/IPSL-CM6A-LR/ssp585/dbpm_output_all_1_ssp585.rds")
-result_set_126<-readRDS("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/IPSL-CM6A-LR/ssp126/dbpm_output_all_1_ssp126.rds")
-result_set_h<-readRDS("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/IPSL-CM6A-LR/historical/dbpm_output_all_1_historical.rds")
+  # original NO temp effect on senescence but temp effect on Om:
+  result_set_585<-readRDS(paste0("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/IPSL-CM6A-LR/ssp585/dbpm_output_all_",grids,"_ssp585.rds"))
+  result_set_126<-readRDS(paste0("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/IPSL-CM6A-LR/ssp126/dbpm_output_all_",grids,"_ssp126.rds"))
+  result_set_h<-readRDS(paste0("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/IPSL-CM6A-LR/historical/dbpm_output_all_",grids,"_historical.rds"))
  
-res<-plot_grid(result_set_h, result_set_585,result_set_126, input_h, input_585, input_126)
-res$plot_trend + res$plot_spectrum + res$plot_growth 
+  res_or<-plot_grid(result_set_h, result_set_585,result_set_126, input_h, input_585, input_126)
 
-# original WHITH temp effect on senescence: 
-# try grid cell: 22430
-result_set_585<-readRDS("/../../rd/gem/private/fishmip_outputs/ISIMIP3b_withTempOnSenescence/IPSL-CM6A-LR/ssp585/dbpm_output_all_1_ssp585.rds")
-result_set_126<-readRDS("/../../rd/gem/private/fishmip_outputs/ISIMIP3b_withTempOnSenescence/IPSL-CM6A-LR/ssp126/dbpm_output_all_1_ssp126.rds")
-result_set_h<-readRDS("/../../rd/gem/private/fishmip_outputs/ISIMIP3b_withTempOnSenescence/IPSL-CM6A-LR/historical/dbpm_output_all_1_historical.rds")
+  # RE-RUN no scenenscence ----
+  # repeat the above as for this test you are running the code from here
+  library(zoo)
+  esms <- c("GFDL-ESM4", "IPSL-CM6A-LR")
+  scenario <- c("picontrol", "historical", "ssp126", "ssp585")
 
-# lots of data was saved in history 
-result_set_h$U<-result_set_h$U[,((300*48)+1):dim(result_set_h$U)[2]] # delete spin-up
-vec<-seq(1,dim(result_set_h$U)[2], by =4) # consider monthly data 
-result_set_h$U<-result_set_h$U[,vec]
-result_set_h$V<-result_set_h$V[,((300*48)+1):dim(result_set_h$V)[2]] 
-result_set_h$V<-result_set_h$V[,vec]
-result_set_h$GGU<-result_set_h$GGU[,((300*48)+1):dim(result_set_h$GGU)[2]] 
-result_set_h$GGU<-result_set_h$GGU[,vec]
-result_set_h$GGV<-result_set_h$GGV[,((300*48)+1):dim(result_set_h$GGV)[2]] 
-result_set_h$GGV<-result_set_h$GGV[,vec]
+  # run 1 grid cell ----  
+  source('runmodel_yearly.R')  
+  # NOTE you have coommented source("./size-based-models/dynamic_sizebased_model_functions.R", chdir = TRUE) in runmodel_yearly.R first 
+  # 3 options here - this is where the bug that made tcb increasing was: 
+  source("./size-based-models/dynamic_sizebased_model_functions.R", chdir = TRUE) # no Tempeffect on senesence mortality (SM.v, SM.v) NOR on the component of detritus that comes from other mortality (OM - line 400)
+                                                                                  # this is the version used in CMIP5 and in Julia's old models so we keep this for consistency
+  # source("./size-based-models/dynamic_sizebased_model_functions_TempOnSenescence.R", chdir = TRUE) # temperature on senescence and the detritus component of OM
+                                                                                  # first model runs used this version, the second model run used a version where 
+                                                                                  # temp on senescence was off but on the detritus component of OM was on
+  # source("./size-based-models/dynamic_sizebased_model_functions_CMIP52019.R", chdir = TRUE) # Ryan latest version with no temp effect on sen or OM - 
+                                                                                              # this is the version we are using which has been merged with dynamic_sizebased_model_functions.R  
 
-res<-plot_grid(result_set_h, result_set_585,result_set_126, input_h, input_585, input_126)
-res$plot_trend + res$plot_spectrum + res$plot_growth
+  i = 2 # ipsl 
+  curr_esm <- esms[i]
+  load(list.files(path=paste("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/", curr_esm, '/',  sep = ""), pattern = "*depth*", full.names = TRUE)) # Load esm depth file
 
-# last time step does not have PP (NA) as these are inputs and last time step is 'left overs' - corrected in new version. in plot we use the second last time step now 
+  # need to run  all scenarios historical, spp126 and spp585 as these are requiresd for the plotting function below 
+  # run for all:
+  j = 2 # historical  
+  curr_scen <- scenario[j]
+  input_loc <- paste("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/", curr_esm, "/", curr_scen,"/", sep = "")
+  output_loc_trial <- paste("/../../rd/gem/private/fishmip_outputs/temp_trials/", curr_esm, "/", curr_scen,"/", sep = "")
 
+  # hist requires a rungridsep()
+  rungridsep(igrid = grids,
+           gcm = curr_esm,
+           protocol = curr_scen,
+           output = "partial",
+           input_files_location = input_loc,
+           output_files_location = output_loc_trial)
 
+  # fut requires rungridsep_ssp() and inputs from hist runs above 
+  for (j in 3:4){
+  
+    curr_scen <- scenario[j]
+    input_loc <- paste("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/", curr_esm, "/", curr_scen,"/", sep = "")
+    output_loc_trial <- paste("/../../rd/gem/private/fishmip_outputs/temp_trials/", curr_esm, "/", curr_scen,"/", sep = "")
+    output_loc_hist <- paste("/../../rd/gem/private/fishmip_outputs/temp_trials/", curr_esm, '/historical', sep = "")
+    input_loc_hist <- paste("/../../rd/gem/private/fishmip_inputs/temp_trials/", curr_esm, '/historical', sep = "")
+  
+    # NOTES: this run the cell and save the outputs in defined here output_loc_trial (different from original runs) so you are not overwriting original files. 
+    rungridsep_ssp(igrid = grids,
+                 gcm = curr_esm,
+                 protocol = curr_scen,
+                 output = "partial",
+                 input_files_location = input_loc,
+                 output_files_location = output_loc_trial,
+                 output_historical_location = output_loc_hist,
+                 input_historical_location = input_loc_hist) # this last argument is not used in the end ... inputs that resulted in the historical outputs. 
+  }
 
-# RE-RUN (using function with no senescence ...) 
-result_set_585<-readRDS("/../../rd/gem/private/fishmip_outputs/temp_trials/IPSL-CM6A-LR/ssp585/dbpm_output_all_1_ssp585.rds")
-result_set_126<-readRDS("/../../rd/gem/private/fishmip_outputs/temp_trials/IPSL-CM6A-LR/ssp126/dbpm_output_all_1_ssp126.rds")
-result_set_h<-readRDS("/../../rd/gem/private/fishmip_outputs/temp_trials/IPSL-CM6A-LR/historical/dbpm_output_all_1_historical.rds")
+  # explore results 
+  result_set_585<-readRDS(paste0("/../../rd/gem/private/fishmip_outputs/temp_trials/IPSL-CM6A-LR/ssp585/dbpm_output_all_",grids,"_ssp585.rds"))
+  result_set_126<-readRDS(paste0("/../../rd/gem/private/fishmip_outputs/temp_trials/IPSL-CM6A-LR/ssp126/dbpm_output_all_",grids,"_ssp126.rds"))
+  result_set_h<-readRDS(paste0("/../../rd/gem/private/fishmip_outputs/temp_trials/IPSL-CM6A-LR/historical/dbpm_output_all_",grids,"_historical.rds"))
+  
+  res_sc<-plot_grid(result_set_h, result_set_585,result_set_126, input_h, input_585, input_126)
+  # res$plot_trend + res$plot_spectrum + res$plot_growth 
 
+  # add info together - datasets 
+  res_or$biomass_time$scenario<-"no_scenenscence"
+  res_sc$biomass_time$scenario<-"scenenscence"
+  df_bio<-res_or$biomass_time %>% 
+    full_join(res_sc$biomass_time)
+  
+  res_or$temp$scenario<-"no_scenenscence"
+  res_sc$temp$scenario<-"scenenscence"
+  df_temp<-res_or$temp %>% 
+    full_join(res_sc$temp)
+  
+  res_or$biomass$scenario<-"no_scenenscence"
+  res_sc$biomass$scenario<-"scenenscence"
+  df_spectra<-res_or$biomass %>% 
+    full_join(res_sc$biomass)
+  
+  res_or$growth$scenario<-"no_scenenscence"
+  res_sc$growth$scenario<-"scenenscence"
+  df_growth<-res_or$growth %>% 
+    full_join(res_sc$growth)
+  
+  # add info together - plots 
+  
+  # bio and temperature trends 
+  layout <- "
+  AB
+  CD
+  "
+  res_or$plot_tcb<-res_or$plot_tcb + ggtitle("Original") + ylim(min(df_bio$bio),max(df_bio$bio))
+  res_sc$plot_tcb<-res_sc$plot_tcb + ggtitle("New") + ylim(min(df_bio$bio),max(df_bio$bio))
+  plot_bio <- res_or$plot_tcb + res_sc$plot_tcb + res_or$plot_temp + res_sc$plot_temp + plot_layout(design = layout)
+  
+  # size spectrum 
+  layout <- "
+  AA
+  BB
+  "
+  
+  df_spectra2<-filter(df_spectra, bio>0, step == max(as.numeric(df_spectra$step))-1) # consider 1 time step as you've done when producing the plot 
+  res_or$plot_spectrum <-res_or$plot_spectrum + ggtitle("Original") + ylim(min(log10(df_spectra2$bio)),max(log10(df_spectra2$bio))) 
+  res_sc$plot_spectrum <-res_sc$plot_spectrum + ggtitle("New") + ylim(min(log10(df_spectra2$bio)),max(log10(df_spectra2$bio)))
+  plot_spectra <- res_or$plot_spectrum + res_sc$plot_spectrum + plot_layout(design = layout)
+  
+  # growth 
+  df_growth2<-filter(df_growth, step == max(as.numeric(step))-1) # consider 1 time step as above
+  res_or$plot_growth2 <-res_or$plot_growth + ggtitle("Original") + ylim(min(log10(df_growth2$growth)),max(log10(df_growth2$growth)))  
+  res_sc$plot_growth2 <-res_sc$plot_growth + ggtitle("New") + ylim(min(log10(df_growth2$growth)),max(log10(df_growth2$growth)))
+  plot_growth <- res_or$plot_growth2 + res_sc$plot_growth2 + plot_layout(design = layout)
 
+  return(list(plot_bio = plot_bio, plot_spectra = plot_spectra, plot_growth = plot_growth, df_bio = df_bio, df_temp = df_temp))
+  
+}    
 
+# depth file to select grid cells according to map 
+load(list.files(path=paste("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/", "IPSL-CM6A-LR", '/',  sep = ""), pattern = "*depth*", full.names = TRUE))
 
+# cell grid where tcb is increasing (when using the TempOnSenescence): 
+readRDS("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/IPSL-CM6A-LR/historical/grid_22000_IPSL-CM6A-LR_historical.rds")$depth
+# lon  lat    depth gridnum
+# 92 -1.5 4687.581   31953
 
+res<-compare_senarios(22000)
+check3_bio<-res$plot_bio # same as above, greather biomass with senesence
+check3_spectra<-res$plot_spectra # opposite than above - steeper sizespectrum for U (predators/pelagics) with senescence. Also inverted sise spectrum compared to above for both with and without senescence - i.e. U below V (detritivores/demersal)
+check3_growth<-res$plot_growth # no difference between with and withot senescence - but U does not growh? 
 
+# try another random grid 
+readRDS("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/IPSL-CM6A-LR/historical/grid_23000_IPSL-CM6A-LR_historical.rds")$depth
+res<-compare_senarios(23000)
+check3_bio<-res$plot_bio 
+check3_spectra<-res$plot_spectra 
+check3_growth<-res$plot_growth 
 
-
-
-
-
-
-
-
-
-
-
-        
 ### explore historical and picontrol inputs and consideration for spin up ----
 inputs_h <- readRDS("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/IPSL-CM6A-LR/historical/grid_1_IPSL-CM6A-LR_historical.rds")
 inputs_h<-inputs_h$ts 
