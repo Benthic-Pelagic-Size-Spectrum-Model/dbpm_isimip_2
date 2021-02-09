@@ -1,73 +1,10 @@
 
-sizemodel<-function(params,ERSEM.det.input=F,U_mat,V_mat,W_mat,temp.effect=T,eps=1e-5,output="aggregated",
-                    use.init = FALSE, burnin.len){
+sizemodel<-function(params,ERSEM.det.input=F,U_mat,V_mat,W_mat,temp.effect=T,eps=1e-5,output="aggregated",use.init = FALSE,burnin.len = 300*48){
+  
   
   
   with(params, {
     
-    # # CN trial - need to specify all of the params inputs if you are not running with()...
-    # lat = params$lat 
-    # lon = params$lon
-    # depth = params$depth
-    # pp = params$pp 
-    # r.plank = params$r.plank 
-    # er = params$er
-    # sst = params$sst        
-    # sft = params$sft
-    # Fmort.u = params$Fmort.u
-    # Fmort.v = params$Fmort.v
-    # min.fishing.size.u = params$min.fishing.size.u
-    # min.fishing.size.v = params$min.fishing.size.v
-    # pref.ben = params$pref.ben
-    # pref.pel = params$pref.pel          
-    # det.coupling = params$det.coupling
-    # sinking.rate = params$sinking.rate
-    # q0 = params$q0
-    # sd.q = params$sd.q
-    # A.u = params$A.u
-    # A.v = params$A.v
-    # alpha.u = params$alpha.u
-    # alpha.v = params$alpha.v
-    # def.high = params$def.high
-    # def.low = params$def.low
-    # K.u = params$K.u
-    # K.v = params$K.v
-    # K.d = params$K.d
-    # AM.u = params$AM.u
-    # AM.v = params$AM.v
-    # handling = params$handling
-    # repro.on = params$repo.on
-    # c1 = params$c1
-    # E = params$E
-    # k = params$k
-    # mu0 = params$mu0
-    # xs = params$xs
-    # p.s = params$p.s
-    # k.sm = params$k.sm 
-    # dx = params$dx
-    # xmin = params$xmin
-    # x1 = params$x1
-    # x1.det = params$x1.det         
-    # xmax = params$xmax
-    # xmax2 = params$xmax2
-    # x = params$x
-    # Nx = params$Nx
-    # ref = params$ref
-    # ref.det = params$ref.det
-    # Fref.u = params$Fref.u
-    # Fref.v = params$Fref.v
-    # idx = params$idx
-    # tmax = params$tmax
-    # delta_t = params$delta_t
-    # Neq = params$Neq
-    # U.init = params$U.init
-    # V.init = params$V.init
-    # W.init = params$W.init
-    # equilibrium = params$equilibrium
-    # use.init = TRUE # this is if you are running ssps 
-    # temp.effect = T
-    # ERSEM.det.input = FALSE
-  
     #---------------------------------------------------------------------------------------
     # Model for a dynamical ecosystem comprised of: two functionally distinct size spectra (predators and detritivores), size structured primary producers and an unstructured detritus resource pool. 
     # time implicit upwind difference discretization algorithm (from Ken Andersen)
@@ -84,12 +21,28 @@ sizemodel<-function(params,ERSEM.det.input=F,U_mat,V_mat,W_mat,temp.effect=T,eps
     
     ui0 <- 10^pp          # time series of intercept of plankton size spectrum (estimated from GCM, biogeophysical model output or satellite data).		
     r.plank <- r.plank   # time series of slope of plankton size spectrum (estimated from GCM, biogeophysical model output or satellite data).  	
-    
-    
     sst <- sst            # time series of temperature in water column
     sft <- sft		      #time series of temperature near seabed
     sinking.rate <- sinking.rate  	      #time series of export ratio ( read in sizeparam)
     
+    
+    #########
+    ### RESTRICT VALUES OF PHYTO SLOPE AND INTERCEPT
+    ## At least with cesm forcings, the model crashes in about 10% of grid squares. These squares have
+    ## a small number of steps with very large phyto slopes and intercepts that cause the model to crash.
+    ## To control for this I restrict values of phyto slope and intercept to be at most two
+    ## standard deviations from the mean
+    ## Author: Ryan Heneghan, Feb 2020
+    
+    #pp_min = mean(pp[burnin.len:length(pp)]) - 1.96*sd(pp[burnin.len:length(pp)])
+    #pp_max = mean(pp[burnin.len:length(pp)]) + 1.96*sd(pp[burnin.len:length(pp)])
+    #r.plank_min = mean(r.plank[burnin.len:length(r.plank)]) - 1.96*sd(r.plank[burnin.len:length(r.plank)])
+    #r.plank_max = mean(r.plank[burnin.len:length(r.plank)]) + 1.96*sd(r.plank[burnin.len:length(r.plank)])
+    #pp[pp > pp_max] <- pp_max
+    #pp[pp < pp_min] <- pp_min
+    #r.plank[r.plank > r.plank_max] <- r.plank_max
+    #r.plank[r.plank < r.plank_min] <- r.plank_min
+    #########
     
     
     #---------------------------------------------------------------------------------------
@@ -190,6 +143,7 @@ sizemodel<-function(params,ERSEM.det.input=F,U_mat,V_mat,W_mat,temp.effect=T,eps
     Fvec.v = Fvec.u = rep(0,length(x))
     
     
+    
     #lookup tables for terms in the integrals which remain constant over time
     gphi  = gphi.f(q1)
     mphi  = mphi.f(q2)
@@ -208,11 +162,7 @@ sizemodel<-function(params,ERSEM.det.input=F,U_mat,V_mat,W_mat,temp.effect=T,eps
     V[ref.det:120,1]<-V.init[ref.det:120]  # set initial detritivore spectrum  
     W[1]<-W.init             # set initial detritus biomass density (g.m^-3) 
     
-    if(use.init == TRUE){
-      # set up with the initial values from previous run
-      U[ref:length(x),1]<-U.init[ref:length(x)]           # set initial consumer size spectrum from previous run
-      V[ref.det:length(x),1]<-V.init[ref.det:length(x)]  # set initial detritivore spectrum from previous run
-    }
+    
     
     #intrinsic natural mortality
     OM.u<-mu0*10^(-0.25*x)
@@ -227,50 +177,12 @@ sizemodel<-function(params,ERSEM.det.input=F,U_mat,V_mat,W_mat,temp.effect=T,eps
     
     #Fvec[Fref:Nx] = 0.09*(x[Fref:Nx]/ log10(exp(1)) ) + 0.04 # from Benoit & Rochet 2004 
     
-    Fvec.u[Fref.u:Nx] = rep(Fmort.u,length(Fvec.u[Fref.u:Nx]))# CN : fishing mortality from smalles size class fished to biggest size class 
+    Fvec.u[Fref.u:Nx] = rep(Fmort.u,length(Fvec.u[Fref.u:Nx]))  
     Fvec.v[Fref.v:Nx] = rep(Fmort.v,length(Fvec.v[Fref.v:Nx]))  
-    
-    # CN - here is where you add fishing... instead of running the above 
-    # Fvec.u:empty vector to hold fishing  mortality rate at each size class 
-    # Fref.u: position in Fvec corresponding to the smallest size fished (it depends on min.fishing.size: minimum size of individuals fished in log10 - i.e. selectivity) 
-    # Nx: lenght of vecotor with size bins
-    # Fmort: fishing mortality rate by size 
-    
-    # instead:
-    # Fvec.u = S.u*Q.u*E.u*T
-    
-    # TO DO 
-    # though effort and fishing mortality should be time-variant - is this the right place? 
-    # check all places inn the code where fishing related dynamics/outputs are specified 
-    # check mizer-fleet and move those bits where appropriate 
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
     
     #iteration over time, N [days]
     
-    # pb = txtProgressBar(min = 0, max = Neq, initial = 1, style = 3) # Initial progress bar
-    
-    for (i in 1:Neq) {
-      
-      #  setTxtProgressBar(pb, i) # Update progress bar
+    for (i in 1:(Neq)) {
       
       if(W[i]=="NaN"|W[i]<0)
       {
@@ -318,6 +230,7 @@ sizemodel<-function(params,ERSEM.det.input=F,U_mat,V_mat,W_mat,temp.effect=T,eps
       
       
       # feeding rates
+      
       f.pel<-pel.Tempeffect[i]*as.vector(((A.u*10^(x*alpha.u)*pref.pel)*(U[,i]*dx)%*%(gphi))/(1+handling*(A.u*10^(x*alpha.u)*pref.pel)*(U[,i]*dx)%*%(gphi))) # yr-1
       
       f.ben<-pel.Tempeffect[i]*as.vector(((A.u*10^(x*alpha.u)*pref.ben)*(V[,i]*dx)%*%(gphi))/(1+handling*(A.u*10^(x*alpha.u)*pref.ben)*(V[,i]*dx)%*%(gphi))) # yr-1
@@ -345,7 +258,7 @@ sizemodel<-function(params,ERSEM.det.input=F,U_mat,V_mat,W_mat,temp.effect=T,eps
       Z.u[,i]<- PM.u[,i] + pel.Tempeffect[i]*OM.u + SM.u + Fvec.u     #yr-1
       
       # Benthos growth integral
-      GG.v[,i]<-(1-def.low)*K.d*f.det #yr-1
+      GG.v[,i]<-(1-def.low)*K.d*f.det         #yr-1
       
       #reproduction
       if (repro.on==1) R.v[,i]<-(1-def.low)*(1-(K.d+AM.v))*(f.det) #yr-1
@@ -401,28 +314,18 @@ sizemodel<-function(params,ERSEM.det.input=F,U_mat,V_mat,W_mat,temp.effect=T,eps
           # pelagic spectrum inputs (sinking dead bodies and faeces) - export ratio used for "sinking rate"
           #  + benthic spectrum inputs (dead stuff - already on/in seafloor)
           
-          # CN this is with temp effect on OM.u and OM.v
-          # input.w<-(sinking.rate[i]*(sum(defbypred[ref:Nx]*dx)
-          #                            + sum(pel.Tempeffect[i]*OM.u[1:Nx]*U[1:Nx,i]*10^(x[1:Nx])*dx) 
-          #                            + sum(SM.u[1:Nx]*U[1:Nx,i]*10^(x[1:Nx])*dx))
-          #           + (sum(ben.Tempeffect[i]*OM.v[1:Nx]*V[1:Nx,i]*10^(x[1:Nx])*dx) 
-          #              + sum(SM.v[1:Nx]*V[1:Nx,i]*10^(x[1:Nx])*dx)) )
-          
-          # CN this is without temp effect on OM.u and OM.v - this is the version used for CMIP5 runs - so also use for CMIP6 and CMIPs comparison paper
           input.w<-(sinking.rate[i]*(sum(defbypred[ref:Nx]*dx)
                                      + sum(OM.u[1:Nx]*U[1:Nx,i]*10^(x[1:Nx])*dx) 
                                      + sum(SM.u[1:Nx]*U[1:Nx,i]*10^(x[1:Nx])*dx))
                     + (sum(OM.v[1:Nx]*V[1:Nx,i]*10^(x[1:Nx])*dx) 
                        + sum(SM.v[1:Nx]*V[1:Nx,i]*10^(x[1:Nx])*dx)) )
+          # )
           
         }
         
         
         if (det.coupling==0.0) {
           
-          # input.w<-sum(ben.Tempeffect[i]*OM.v[1:Nx]*V[1:Nx,i]*10^(x[1:Nx])*dx) + sum(SM.v[1:Nx]*V[1:Nx,i]*10^(x[1:Nx])*dx)
-          
-          # CN use this version and see above explanation. However this is not relevant as coupling == 1 for both CMIPs runs
           input.w<-sum(OM.v[1:Nx]*V[1:Nx,i]*10^(x[1:Nx])*dx) + sum(SM.v[1:Nx]*V[1:Nx,i]*10^(x[1:Nx])*dx)
           
         }
@@ -536,24 +439,28 @@ sizemodel<-function(params,ERSEM.det.input=F,U_mat,V_mat,W_mat,temp.effect=T,eps
       rm(j)
       
       
+      
+      
     }#end time iteration
     
+    
     return(list(U=U[,],GG.u=GG.u[,],PM.u=PM.u[,],V=V[,],GG.v=GG.v[,],PM.v=PM.v[,],Y.u=Y.u[,],Y.v=Y.v[,],W=W[], params=params))
+    
     
     # return(list(U=U[,Neq+1],GG.u=GG.u[,Neq],PM.u=PM.u[,Neq],V=V[,Neq+1],GG.v=GG.v[,Neq],PM.v=PM.v[,Neq],Y=Y[,Neq],W=W[Neq+1], params=params))
     
   })  
   # end with(params)
   
+  
 }#end size-based model function
 
 
 
 
-sizeparam<-function(equilibrium=F, dx=0.1,xmin=-12,xmax=6,xmin.consumer.u=-7,xmin.consumer.v=-7,tmax=100,
-                    tstepspryr=48,fmort.u =0.0,fminx.u=1, fmort.v = 0.0,fminx.v=1,er=0.5,pp=-3,slope=-1,lat=NA,
-                    lon=NA,depth=500,sst=20,sft=20,
-                    use.init = FALSE, U.initial = NA, V.initial = NA ,W.initial = NA){
+sizeparam<-function(equilibrium=F, dx=0.1,xmin=-12,xmax=6,xmin.consumer.u=-7,xmin.consumer.v=-7,tmax=100, tstepspryr=48,fmort.u =0.0,fminx.u=1, fmort.v = 0.0,fminx.v=1,er=0.5,pp=-3,slope=-1,lat=NA,lon=NA,depth=500,sst=20,sft=20,use.init = FALSE, U.initial = NA
+                                           ,V.initial = NA
+                                           ,W.initial = NA){
   #---------------------------------------------------------------------------------------
   # FUNCTION TO GET Parameters of model
   #---------------------------------------------------------------------------------------
@@ -685,17 +592,11 @@ sizeparam<-function(equilibrium=F, dx=0.1,xmin=-12,xmax=6,xmin.consumer.u=-7,xmi
   param$V.init<-param$sinking.rate[1]*10^param$pp[1]*10^(param$r.plank[1]*param$x)  # set initial detritivore spectrum  
   param$W.init<-0.00001  # abritrary initial value for detritus
   
-  if(use.init == TRUE){
-    param$U.init <- U.initial
-    param$V.init <- V.initial
-    param$W.init <- W.initial
-  }
-  
   param$equilibrium=equilibrium
   
   
   return(param)
-  
+
 }#end sizeparam function
 
 
@@ -940,4 +841,8 @@ optimizeYield <- function(params,com,pp=pp, sst=sst, sft=sft, U_mat=U, V_mat=V,s
   return(list(result,com))
   
 }
+
+
+
+
 
