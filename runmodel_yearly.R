@@ -432,15 +432,15 @@ rungridsep_ssp <- function(igrid
                        ,input_historical_location
                        ,output_historical_location) {
   
-  # CN trial 
-  # igrid <- 22430
-  # gcm = curr_esm 
+  # # CN trial
+  # igrid <- 1
+  # gcm = curr_esm
   # protocol = curr_scen
   # output = "partial"
-  # input_files_location = input_loc 
+  # input_files_location = input_loc
   # output_files_location = output_loc
-  # output_historical_location = output_loc_hist 
-  # input_historical_location = input_loc_hist 
+  # output_historical_location = output_loc_hist
+  # input_historical_location = input_loc_hist
   
   # we need to run the model with time-varying inputs   
   # the largest dt of the model is a monthly time step (Q-F was daily...which may still be needed) 
@@ -573,19 +573,6 @@ rungridsep_ssp <- function(igrid
     
     result_set$notrun <- ifelse(any(result_set$U[150,]=="NaN")==FALSE, FALSE, TRUE)
     
-    # fix ssp585 cell 22430 as outputs are given as characters...
-    # U<-result_set$U
-    # dim(result_set$U)
-    # U<-sapply(U, FUN=as.numeric)
-    # U <- matrix(data=U, ncol=dim(result_set$U)[2], nrow= dim(result_set$U)[1])
-    # result_set$U<-U
-    
-    # check if initial abundance have been considered 
-    # sum(result_set$U[,1])
-    # sum(U.initial)
-    # sum(result_set$V[,1])
-    # sum(V.initial)
-    
     # save results (no spin up this time) 
     # CN check inputs and outputs time dimention 
     # nrow(inputs$ts) # 4125 input values 
@@ -710,7 +697,7 @@ rungridsep_ssp <- function(igrid
                            dx = result_set$params$dx) 
       
       
-      result_partial$U[,1]
+      # result_partial$U[,1]
       
       # save 
       output_filename <- paste(output_files_location, "dbpm_output_all_", igrid, '_', protocol, '.rds', sep = "") 
