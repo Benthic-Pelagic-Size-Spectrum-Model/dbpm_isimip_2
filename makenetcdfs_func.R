@@ -244,40 +244,47 @@ mknetcdf<-function(varname, protocol, inputpath, datapath, savetopath, grids, is
 
 ###### aggregated outputs ----
 
-# be careful with this as if you change the order of the vars2make you will get wrong names.  
-dbpm.variables<-data.frame(name = vars2make, 
-                           description = c("Total Consumer Biomass Density",
-                                           "Total Pelagic Biomass Density", 
-                                           "Biomass Density of Small Pelagics <30cm",
-                                           "Biomass Density of Medium Pelagics >=30cm and <90cm",
-                                           "Biomass Density of Large Pelagics >=90cm",
-                                           "Total Demersal Biomass Density",
-                                           "Biomass Density of Small Demersals <30cm",
-                                           "Biomass Density of Medium Demersals >=30cm and <90cm",
-                                           "Biomass Density of Large Demersals >=90cm"))
+# # be careful with this as if you change the order of the vars2make you will get wrong names.  
+# dbpm.variables<-data.frame(name = vars2make, 
+#                            description = c("Total Consumer Biomass Density",
+#                                            "Total Pelagic Biomass Density", 
+#                                            "Biomass Density of Small Pelagics <30cm",
+#                                            "Biomass Density of Medium Pelagics >=30cm and <90cm",
+#                                            "Biomass Density of Large Pelagics >=90cm",
+#                                            "Total Demersal Biomass Density",
+#                                            "Biomass Density of Small Demersals <30cm",
+#                                            "Biomass Density of Medium Demersals >=30cm and <90cm",
+#                                            "Biomass Density of Large Demersals >=90cm"))
 
 
-mknetcdf_agg<-function(varname, protocol, inputpath, datapath, savetopath, grids, other_param, isave, yearRange){
+mknetcdf_agg<-function(varname, protocol, inputpath, datapath, savetopath, grids, other_param, isave, yearRange, curr_esm){
   
-  # CN  trial 
+  # # CN  trial
+  # i = 1
+  # j = 4
   # varname = vars2make[i]
-  # protocol = prots[j] 
+  # protocol = prots[j]
   # inputpath = input_loc
   # datapath = output_loc
   # savetopath = save_loc
-  # igrid = 1
+  # igrid = 38659
   # other_param = other_param
   # isave = isave[[j]]
   # yearRange = yearRange[j]
-  
+  # curr_esm = curr_esm
+
   ## Cut values and lat-lons for earth models 
-  lon<- -180:179
-  lat<- -89.5:89.5
+  if(curr_esm == "IPSL-CM6A-LR"){
+    lon<- -180:179 # they should both be -179.5:179.5 but you've run IPSL with the old grid 
+  }else{
+    lon<- -179.5:179.5 
+  }
   
-  # CN correct Matthias - BUT NEED TO RE-RUN the model using updated inputs - NO asked Ryan 
-  lon<- -179.5:179.5
-  lon<- -180:179 # back to before
-  lat<- 89.5:-89.5
+  #if(curr_esm == "IPSL-CM6A-LR"){
+    lat<- 89.5:-89.5 
+  #}else{
+    # lat<- 77.5:-89.5 # I don't understand this!!!!! why are we missing these grid cells? 
+  #}
   
   t<-1:length(isave) # this could simply be isave 
   
@@ -294,21 +301,19 @@ mknetcdf_agg<-function(varname, protocol, inputpath, datapath, savetopath, grids
   
   # get netcdf names
   # nc_names <- paste(savetopath, protocol, "/dbpm_ipsl_", "agg_",varname, "_global_annual.nc4", sep = "") # /dbpm_cesm1-bgc_nobc_rcp85_nosoc_co2_
-  nc_names <- paste(savetopath, protocol,"/dbpm_ipsl_cm6a_lr_", "nobc_", protocol, "_nat_default_",varname, "_global_montly_", yearRange, ".nc4", sep = "") 
+  # nc_names <- paste(savetopath, protocol,"/dbpm_ipsl_cm6a_lr_", "nobc_", protocol, "_nat_default_",varname, "_global_montly_", yearRange, ".nc4", sep = "") 
   # according to protocol - need to change year for each protocol in description of netcdf below 
   # bias-adjustment = nobc; matthias correction: nobasd
   # soc-scenario = nosoc # CN not sure about this! just using Ryan def (COULD BE 'nat' as in no fishing)
   # sens-scenario = default
   
   # fix Matthias 
-  nc_names <- paste(savetopath, protocol,"/dbpm_ipsl-cm6a-lr_", "nobasd_", protocol, "_nat_default_",varname, "_global_monthly_", yearRange, ".nc", sep = "") 
- 
+  # nc_names <- paste(savetopath, protocol,"/dbpm_ipsl-cm6a-lr_", "nobasd_", protocol, "_nat_default_",varname, "_global_monthly_", yearRange, ".nc", sep = "") 
+  nc_names <- paste(savetopath, protocol,"/dbpm_", tolower(curr_esm), "_nobasd_", protocol, "_nat_default_",varname, "_global_monthly_", yearRange, ".nc", sep = "") 
+   
   # pb = txtProgressBar(min = 0, max = length(grids), initial = 1, style = 3) # Initial progress bar
 
   for (igrid in grids) {
-    
-    # CN  trial 
-    # igrid = 1
     
     data_filename <- paste(datapath, protocol, "/", "dbpm_output_all_", igrid, '_', protocol, '.rds', sep = "") 
     
@@ -318,8 +323,25 @@ mknetcdf_agg<-function(varname, protocol, inputpath, datapath, savetopath, grids
       result_set <- readRDS(data_filename) 
       
       # load grid inputs   
-      input_filename <- paste(inputpath, protocol, "/", "grid" ,'_' ,igrid, "_IPSL-CM6A-LR_", protocol,'.rds', sep = "")
+      input_filename <- paste(inputpath, protocol, "/", "grid" ,'_' ,igrid, "_",curr_esm,"_", protocol,'.rds', sep = "")
       inputs <- readRDS(input_filename)
+      
+      # in some rare cases (grid cell 38658 ssp585 GFDL - don't know why) the outputs are saved as characters and you need to transform them to numeric. 
+      if(is.character(result_set$U[1,1])){
+        U<-result_set$U
+        U<-sapply(U, FUN=as.numeric)
+        U <- matrix(data=U, ncol=dim(result_set$U)[2], nrow= dim(result_set$U)[1])
+        # sum(result_set$U[,1])
+        # sum(U[1,])
+        result_set$U<-U 
+      }
+      
+      if(is.character(result_set$V[1,1])){
+        V<-result_set$V
+        V<-sapply(V, FUN=as.numeric)
+        V<-matrix(data=V, ncol=dim(result_set$V)[2], nrow= dim(result_set$V)[1])
+        result_set$V<-V 
+      }
       
       # CN calculate aggregated outputs here (copied/moved from inside models - see comments in batch_run_create_output_netcdf.r) 
       # U = pelagic
@@ -348,55 +370,57 @@ mknetcdf_agg<-function(varname, protocol, inputpath, datapath, savetopath, grids
       # done for below variables as well 
       
       if (varname=="tcb"){
-        var[paste(inputs$depth$lon),paste(inputs$depth$lat),] <- (TotalUbiomass + TotalVbiomass)
+        var[inputs$depth$lon,inputs$depth$lat,] <- (TotalUbiomass + TotalVbiomass)
       }
       
-      # if (varname=="tcblog10"){ #  total consumers biomass density in log10 weight bins
-        #  TO DO - is this consumer_spec ??? but size bins need to change? it also requires another netcdf structure.... with size 
-      # }
-      
       if (varname=="tpb"){ # total pelagic biomass density, all pelagic consumers (trophic level >1, vertebrates and invertebrates)   
-        var[paste(inputs$depth$lon),paste(inputs$depth$lat),] <- TotalUbiomass 
+        var[inputs$depth$lon,inputs$depth$lat,] <- TotalUbiomass 
       }
       
       if (varname=="bp30cm"){ # biomass density of small pelagics <30 cm    
-        bp30cm <- apply(result_set$U[1:xcutref[1]-1,isave]*other_param$dx*10^other_param$x[1:xcutref[1]-1],2,sum) # <30
+        
+        ### CN: need to cut the smallest sizes as done for tcb and size-spectrum or size resolved data? yes 
+        bp30cm <- apply(result_set$U[other_param$ref:xcutref[1]-1,isave]*other_param$dx*10^other_param$x[other_param$ref:xcutref[1]-1],2,sum) # <30
+        # bp30cm <- apply(result_set$U[1:xcutref[1]-1,isave]*other_param$dx*10^other_param$x[1:xcutref[1]-1],2,sum) # <30
         bp30cm<-bp30cm*min(inputs$depth$depth,100)
-        var[paste(inputs$depth$lon),paste(inputs$depth$lat),] <- bp30cm
+        var[inputs$depth$lon,inputs$depth$lat,] <- bp30cm
       }
       
       if (varname=="bp30to90cm"){ # biomass density of medium pelagics <=30 to 90 cm   
         bp30to90cm <- apply(result_set$U[xcutref[1]:xcutref[2]-1,isave]*other_param$dx*10^other_param$x[xcutref[1]:xcutref[2]-1],2,sum) # >=30, <90 
         bp30to90cm<-bp30to90cm*min(inputs$depth$depth,100)
-        var[paste(inputs$depth$lon),paste(inputs$depth$lat),] <- bp30to90cm
+        var[inputs$depth$lon,inputs$depth$lat,] <- bp30to90cm
       }
       
       if (varname=="bp90cm"){ # biomass density of large pelagics >=90 cm    
         bp90cm <- apply(result_set$U[xcutref[2]:other_param$Nx,isave]*other_param$dx*10^other_param$x[xcutref[2]:other_param$Nx],2,sum) # >=90
         bp90cm<-bp90cm*min(inputs$depth$depth,100)
-        var[paste(inputs$depth$lon),paste(inputs$depth$lat),] <- bp90cm
+        var[inputs$depth$lon,inputs$depth$lat,] <- bp90cm
       }
       
       if (varname=="tdb"){ # total demersal biomass density, all demersal consumers (trophic level >1, vertebrates and invertebrates)   
-        var[paste(inputs$depth$lon),paste(inputs$depth$lat),] <- TotalVbiomass 
+        var[inputs$depth$lon,inputs$depth$lat,] <- TotalVbiomass 
       }
       
-      if (varname=="bd30cm"){ # biomass density of small demersal <30 cm    
-        bd30cm <- apply(result_set$V[1:xcutref[1]-1,isave]*other_param$dx*10^other_param$x[1:xcutref[1]-1],2,sum) # <30
+      if (varname=="bd30cm"){ # biomass density of small demersal <30 cm  
+        
+        ### CN: need to cut the smallest sizes as done for tcb and size-spectrum or size resolved data? yes
+        bd30cm <- apply(result_set$V[other_param$ref:xcutref[1]-1,isave]*other_param$dx*10^other_param$x[other_param$ref:xcutref[1]-1],2,sum) # <30
+        # bd30cm <- apply(result_set$V[1:xcutref[1]-1,isave]*other_param$dx*10^other_param$x[1:xcutref[1]-1],2,sum) # <30
         bd30cm<-bd30cm*min(inputs$depth$depth,100)
-        var[paste(inputs$depth$lon),paste(inputs$depth$lat),] <- bd30cm
+        var[inputs$depth$lon,inputs$depth$lat,] <- bd30cm
       }
       
       if (varname=="bd30to90cm"){ # biomass density of medium demersal <=30 to 90 cm   
         bd30to90cm <- apply(result_set$V[xcutref[1]:xcutref[2]-1,isave]*other_param$dx*10^other_param$x[xcutref[1]:xcutref[2]-1],2,sum) # >=30, <90
         bd30to90cm<-bd30to90cm*min(inputs$depth$depth,100)
-        var[paste(inputs$depth$lon),paste(inputs$depth$lat),] <- bd30to90cm
+        var[inputs$depth$lon,inputs$depth$lat,] <- bd30to90cm
       }
       
       if (varname=="bd90cm"){ # biomass density of large demersal >=90 cm    
         bd90cm <- apply(result_set$V[xcutref[2]:other_param$Nx,isave]*other_param$dx*10^other_param$x[xcutref[2]:other_param$Nx],2,sum) # >=90
         bd90cm<-bd90cm*min(inputs$depth$depth,100)
-        var[paste(inputs$depth$lon),paste(inputs$depth$lat),] <- bd90cm
+        var[inputs$depth$lon,inputs$depth$lat,] <- bd90cm
       }
       
     }
@@ -459,6 +483,228 @@ mknetcdf_agg<-function(varname, protocol, inputpath, datapath, savetopath, grids
   # att.put.nc(new_nc, variable = "NC_GLOBAL", name = "diazotroph_input_used", type = "NC_CHAR", value = "yes, diaz carbon biomass added to large phyto carbon biomass") # CN not sure about this - need to ask
   # att.put.nc(new_nc, variable = "NC_GLOBAL", name = "wet-weight to carbon conversion", type = "NC_CHAR", value = "0.0352") # CN not sure about this, current outputs should be in wet weight - need to ask
   
+  close.nc(new_nc)
+  
+}
+
+
+
+
+###### aggregated outputs size-spectrum ----
+
+mknetcdf_agg_sp<-function(varname, protocol, inputpath, datapath, savetopath, grids, other_param, isave, yearRange, curr_esm){
+  
+  # # CN  trial
+  # i = 1
+  # j = 1
+  # varname = "tcblog10"
+  # protocol = prots[j]
+  # inputpath = input_loc
+  # datapath = output_loc
+  # savetopath = save_loc
+  # igrid = 1
+  # other_param = other_param
+  # isave = isave[[j]]
+  # yearRange = yearRange[j]
+  # curr_esm = curr_esm
+  
+  # see mknetcdf_agg() above for comments 
+  if(curr_esm == "IPSL-CM6A-LR"){
+    lon<- -180:179
+  }else{
+    lon<- -179.5:179.5 
+  }
+  
+  lat<- 89.5:-89.5
+  
+  t<-1:length(isave)  
+  
+  # time starts from 1601 and is given in months - matthias fix
+  # add months since 1601 as this is the ISIMIP starting date convention    
+  if (yearRange == "2015_2100") {
+    months_since_1601 = ((2015-1601)*12) -1 # data in future starts in 2015 - it works in terms of year and month
+  }else {months_since_1601 = ((1850-1601)*12) -1} # data in historical starts in 1980
+  t<-t + months_since_1601
+  
+  # size - fishmip required size bins (1g, 10g, 100g, 1kg, 10kg, 100kg). classes: 1-10, 10-100, 100-1000, 1000-10000, 10000-100000, 100000+
+  size <- c(1, 10, 100, 1000, 10000, 100000)
+  
+  # storage for the gridded outputs for current variable 
+  var <- array(1e20, dim = c(length(lon), length(lat), length(size), length(t)), dimnames = list(lon,lat, size,t))
+  
+  # get netcdf names
+  nc_names <- paste(savetopath, protocol,"/dbpm_", tolower(curr_esm), "_nobasd_", protocol, "_nat_default_",varname, "_global_monthly_", yearRange, ".nc", sep = "") 
+  
+  for (igrid in grids) {
+    
+    # igrid = 1
+    
+    data_filename <- paste(datapath, protocol, "/", "dbpm_output_all_", igrid, '_', protocol, '.rds', sep = "")
+    
+    if(file.exists(data_filename) == TRUE){
+      
+      # load model outputs 
+      result_set <- readRDS(data_filename) 
+      
+      # load grid inputs
+      input_filename <- paste(inputpath, protocol, "/", "grid" ,'_' ,igrid, "_",curr_esm,"_", protocol,'.rds', sep = "")
+      
+      inputs <- readRDS(input_filename)
+
+      # in some rare cases (grid cell 38658 ssp585 GFDL - don't know why) the outputs are saved as characters and you need to transform them to numeric. 
+      if(is.character(result_set$U[1,1])){
+        U<-result_set$U
+        U<-sapply(U, FUN=as.numeric)
+        U <- matrix(data=U, ncol=dim(result_set$U)[2], nrow= dim(result_set$U)[1])
+        # sum(result_set$U[,1])
+        # sum(U[1,])
+        result_set$U<-U 
+      }
+      
+      if(is.character(result_set$V[1,1])){
+        V<-result_set$V
+        V<-sapply(V, FUN=as.numeric)
+        V<-matrix(data=V, ncol=dim(result_set$V)[2], nrow= dim(result_set$V)[1])
+        result_set$V<-V 
+      }
+      
+      # # CN calculate aggregated output for size-spectrum 
+      # 1 aggregate outputs in 1g, 10g, 100g, 1kg, 10kg, 100kg bins as you've done with length below - be careful with the log10 size of things... for both U an dV
+      # 2 sum U and V
+      # 3 tansform to m-2 as you've done for the other outputs 
+      # 4 do you have to log10() them!?
+      # 5 allocate outputs to the matrix by size and time as you've done below
+
+      # define size classes and positions (as above)
+      wcut<-size
+      xcutref <- wcut
+      for (i in 1:length(xcutref)) xcutref[i] = (min(which(other_param$x>=log10(xcutref[i]))))
+
+      # test to understand the code .... 
+      # dim(result_set$U)
+      # trial<-result_set$U[other_param$ref:xcutref[1]-1,isave] # biomass (number of individuals) in these size classess X time 
+      # trial2<-other_param$dx*10^other_param$x[other_param$ref:xcutref[1]-1] # dx(?) * unlog the size classes to get from log10(g) to g  
+      # # trial*trial2 # transform numbers to biomass (g x size bins) - using apply to do this for each time step 
+      # # sum abundances from all bins considered
+    
+      # code already available to calcaulte the consumers size spectrum (from conversation with Julia) # could do this first nd then split it into classes ....  
+      # consumer_spec <- result_set$U[other_param$ref:other_param$Nx,isave] + result_set$V[other_param$ref.det:other_param$Nx,isave]
+      
+      # 1g
+      # bp1g <- apply(result_set$U[other_param$ref:xcutref[1]-1,isave]*other_param$dx*10^other_param$x[other_param$ref:xcutref[1]-1],2,sum) # U < 1g
+      # bd1g <- apply(result_set$V[other_param$ref:xcutref[1]-1,isave]*other_param$dx*10^other_param$x[other_param$ref:xcutref[1]-1],2,sum) # V < 1g
+      # b1g<-bp1g + bd1g # sum U and V
+      # b1g<-b1g*min(inputs$depth$depth,100) # from m-3 to m-2
+      # var[inputs$depth$lon,inputs$depth$lat,1,] <- b1g # add to matrix # not sure why the size dimention cannot be specified as size[2] whoch is 10 
+      
+      
+      # bp1g
+      bp1g<-apply(result_set$U[xcutref[1]:xcutref[2]-1,isave]*other_param$dx*10^other_param$x[xcutref[1]:xcutref[2]-1],2,sum) # >=1 <10
+      bd1g<-apply(result_set$V[xcutref[1]:xcutref[2]-1,isave]*other_param$dx*10^other_param$x[xcutref[1]:xcutref[2]-1],2,sum) # >=1 <10
+      b1g<-bp1g+ bd1g
+      b1g<-b1g*min(inputs$depth$depth,100)
+      var[inputs$depth$lon,inputs$depth$lat,1,] <- b1g
+      
+      # bp10g
+      bp10g<-apply(result_set$U[xcutref[2]:xcutref[3]-1,isave]*other_param$dx*10^other_param$x[xcutref[2]:xcutref[3]-1],2,sum) # >=10 <100
+      bd10g<-apply(result_set$V[xcutref[2]:xcutref[3]-1,isave]*other_param$dx*10^other_param$x[xcutref[2]:xcutref[3]-1],2,sum)
+      b10g<-bp10g+ bd10g
+      b10g<-b10g*min(inputs$depth$depth,100)
+      var[inputs$depth$lon,inputs$depth$lat,2,] <- b10g
+      
+      # bp100g
+      bp100g<-apply(result_set$U[xcutref[3]:xcutref[4]-1,isave]*other_param$dx*10^other_param$x[xcutref[3]:xcutref[4]-1],2,sum) # >=100 <1000
+      bd100g<-apply(result_set$V[xcutref[3]:xcutref[4]-1,isave]*other_param$dx*10^other_param$x[xcutref[3]:xcutref[4]-1],2,sum)
+      b100g<-bp100g+ bd100g
+      b100g<-b100g*min(inputs$depth$depth,100)
+      var[inputs$depth$lon,inputs$depth$lat,3,] <- b100g
+      
+      # bp1000g
+      bp1000g<-apply(result_set$U[xcutref[4]:xcutref[5]-1,isave]*other_param$dx*10^other_param$x[xcutref[4]:xcutref[5]-1],2,sum) # >=1000 <10000
+      bd1000g<-apply(result_set$V[xcutref[4]:xcutref[5]-1,isave]*other_param$dx*10^other_param$x[xcutref[4]:xcutref[5]-1],2,sum)
+      b1000g<-bp1000g+ bd1000g
+      b1000g<-b1000g*min(inputs$depth$depth,100)
+      var[inputs$depth$lon,inputs$depth$lat,4,]<- b1000g
+      
+      # bp10000g
+      bp10000g<-apply(result_set$U[xcutref[5]:xcutref[6]-1,isave]*other_param$dx*10^other_param$x[xcutref[5]:xcutref[6]-1],2,sum) # >=10000 <100000
+      bd10000g<-apply(result_set$V[xcutref[5]:xcutref[6]-1,isave]*other_param$dx*10^other_param$x[xcutref[5]:xcutref[6]-1],2,sum)
+      b10000g<-bp10000g + bd10000g
+      b10000g<-b10000g*min(inputs$depth$depth,100)
+      var[inputs$depth$lon,inputs$depth$lat,5,] <- b10000g
+      
+      # bp100000g
+      bp100000g<-apply(result_set$U[xcutref[6]:length(other_param$x),isave]*other_param$dx*10^other_param$x[xcutref[6]:length(other_param$x)],2,sum) # >=100000
+      bd100000g<-apply(result_set$V[xcutref[6]:length(other_param$x),isave]*other_param$dx*10^other_param$x[xcutref[6]:length(other_param$x)],2,sum)
+      b100000g<-bp100000g + bd100000g
+      b100000g<-b100000g*min(inputs$depth$depth,100)
+      var[inputs$depth$lon,inputs$depth$lat,6,] <- b100000g
+      
+    }
+    
+  }
+  
+  # transform dimnames from g to log10(g) - not sure why but protocol says: TOTAL consumer biomass density in log10 weight bins;
+  # If the model is size-structured, please provide biomass in equal log 10 g C weight bins (1g, 10g, 100g, 1kg, 10kg, 100kg)
+  dimnames(var)[[3]]<-as.character(log10(as.numeric(dimnames(var)[[3]])))
+  # names(var)[[3]]<-dimnames(var)[[3]]
+  # check
+  # var[1:2,1:2,1:6,1:2]
+  
+  ## WRITE NETCDFS
+  
+  curr_array = var 
+  
+  new_nc <- create.nc(nc_names, format ="netcdf4")
+  
+  dim.def.nc(new_nc, 'lon', dimlength = length(lon)) 
+  var.def.nc(new_nc, 'lon', 'NC_FLOAT', 'lon')
+  var.put.nc(new_nc, 'lon', lon)
+  att.put.nc(new_nc, variable = 'lon', type = 'NC_CHAR', name = 'long_name', value = 'longitude')
+  att.put.nc(new_nc, variable = 'lon', type = 'NC_CHAR', name = 'standard_name', value = 'longitude') 
+  att.put.nc(new_nc, variable = 'lon', type = 'NC_CHAR', name = 'units', value = 'degrees_east')
+  att.put.nc(new_nc, variable = 'lon', type = 'NC_CHAR',  name = 'axis', value = 'X')
+  
+  dim.def.nc(new_nc, 'lat', dimlength = length(lat))
+  var.def.nc(new_nc, 'lat', 'NC_FLOAT', 'lat')
+  var.put.nc(new_nc, 'lat', lat)
+  att.put.nc(new_nc, variable = 'lat', type = 'NC_CHAR', name = 'long_name', value = 'latitude')
+  att.put.nc(new_nc, variable = 'lat', type = 'NC_CHAR', name = 'standard_name', value = 'latitude') 
+  att.put.nc(new_nc, variable = 'lat', type = 'NC_CHAR', name = 'units', value = 'degrees_north')
+  att.put.nc(new_nc, variable = 'lat', type = 'NC_CHAR', name = 'axis', value = 'Y')
+  
+  # CN define all about size as per lat and lon above 
+  dim.def.nc(new_nc, 'size', dimlength = length(size))
+  var.def.nc(new_nc, 'size', 'NC_FLOAT', 'size')
+  var.put.nc(new_nc, 'size', size) 
+  att.put.nc(new_nc, variable = 'size', type = 'NC_CHAR', name = 'long_name', value = 'size')
+  att.put.nc(new_nc, variable = 'size', type = 'NC_CHAR', name = 'standard_name', value = 'size') 
+  att.put.nc(new_nc, variable = 'size', type = 'NC_CHAR', name = 'units', value = 'log10g')
+  att.put.nc(new_nc, variable = 'size', type = 'NC_CHAR', name = 'axis', value = 'Z')
+  
+  dim.def.nc(new_nc, 'time', unlim = TRUE)
+  var.def.nc(new_nc, 'time', 'NC_DOUBLE', 'time')
+  var.put.nc(new_nc, 'time', t)
+  att.put.nc(new_nc, variable = 'time', type = 'NC_CHAR', name = 'long_name', value = 'time')
+  att.put.nc(new_nc, variable = 'time', type = 'NC_CHAR', name = 'standard_name', value = 'time')
+  att.put.nc(new_nc, variable = 'time', type = 'NC_CHAR', name = 'units', value = 'months since 1601-1-1 00:00:00') 
+  att.put.nc(new_nc, variable = 'time', type = 'NC_CHAR', name = 'calendar', value = '360_day') 
+  att.put.nc(new_nc, variable = 'time', type = 'NC_CHAR', name = 'axis', value = 'T')
+  
+  var.def.nc(new_nc, varname, "NC_FLOAT", c('lon', 'lat','size','time'))
+  att.put.nc(new_nc, variable = varname, type = 'NC_CHAR', name = 'long_name', value = "Total consumers biomass density in log10 weight bins")
+  att.put.nc(new_nc, variable = varname, type = 'NC_CHAR', name = 'units', value = "g m-2") 
+  att.put.nc(new_nc, variable = varname, type = 'NC_FLOAT', name = 'missing_value', value = 1e20)
+  att.put.nc(new_nc, variable = varname, type = 'NC_FLOAT', name = '_FillValue', value = 1e20)
+  var.put.nc(new_nc, varname, curr_array)
+  
+  att.put.nc(new_nc, variable = "NC_GLOBAL", name = "author", type = "NC_CHAR", value = "Created by Camilla Novaglio, with help from Julia Blanchard, Ryan Heneghan, and Just Berkhout")
+  att.put.nc(new_nc, variable = "NC_GLOBAL", name = "contact", type = "NC_CHAR", value = "camilla.novaglio@utas.edu.au; Julia.blanchard@utas.edu.au")
+  att.put.nc(new_nc, variable = "NC_GLOBAL", name = "institution", type = "NC_CHAR", value = "Institute for Marine and Antarctic Studies")
+  att.put.nc(new_nc, variable = "NC_GLOBAL", name = "date_created", type = "NC_CHAR", value = date())
+  att.put.nc(new_nc, variable = "NC_GLOBAL", name = "comments", type = "NC_CHAR", value = "Model output for ISIMIP3b")
+  att.put.nc(new_nc, variable = "NC_GLOBAL", name = "length-weight_conversion", type = "NC_CHAR", value = 'wet weight = 0.01*(length^3)') 
+
   close.nc(new_nc)
   
 }
