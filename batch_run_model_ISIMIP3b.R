@@ -29,14 +29,14 @@ source('runmodel_yearly.R')
 
 ### protocols requiring spin up ----
 
-# for(i in 1:length(esms)){ # Loop over esms
+for(i in 1:length(esms)){ # Loop over esms
   
-  i = 2
+  i = 1
   curr_esm <- esms[i]
   
   load(list.files(path=paste("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/", curr_esm, '/',  sep = ""), pattern = "*depth*", full.names = TRUE)) # Load esm depth file
   
-  # for(j in 1:length(scenario)){ # Loop over scenario
+  for(j in 1:(length(scenario)-2)){ # Loop over scenario
   
     # historical saved weekly outputs + spin up = 4.9T, 4 days to run (but on 25 cores)
     # picontrol saved montly outputs = 340G, 2.5 days to run on 45 cores  
@@ -44,7 +44,10 @@ source('runmodel_yearly.R')
     # new runs without temp effect on senescenace:
     # historical: montly outputs 2.2 days; need to run separately as you are also saving growth - and picontrol is not necessary at this stage. 
     # note that you can either use the dynamics_sizebased_model_function.R or the dynamics_sizebased_model_function_TempOnSenescence.R in runmodel_yearly.R  
-    j = 2
+
+    # new runs without temp effect on senescenace and other mortalities for detritus. 
+    # historical IPSL: montly outputs saving growth also, ~ 2.2 days
+    # historical + picontrol GFDL: montly outputs saving growth also, ~ 7 not sure why so long (picontrol has a time dimention of 3012, hisitircal of 1980). 
     
     curr_scen <- scenario[j]
     
@@ -68,14 +71,15 @@ source('runmodel_yearly.R')
     print((proc.time()-ptm)/60.0)
     
     stopCluster(cl)
-#  }
-#}
+  }
+
+}
     
 ### projections protocols ssp ----
     
-# for(i in 1:length(esms)){ # Loop over esms
+ for(i in 1:length(esms)){ # Loop over esms
   
-  i = 2 # ipsl 
+  i = 1  
   curr_esm <- esms[i]
   
   load(list.files(path=paste("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/", curr_esm, '/',  sep = ""), pattern = "*depth*", full.names = TRUE)) # Load esm depth file
@@ -87,12 +91,17 @@ source('runmodel_yearly.R')
     
     # runs without temperature effect on senescence - see above. both ssp/s
     # saved weekly outputs starting from last historical week = 25 h to run together
+    
+    # run without temp effect on senescence and on detritus other mortalities 
+    # strange error with GFDL: I rerun teh code and only 2 grid cells are now not run , but the error still remains. If run one by one grid cell, it all seems OK
+    # Error in checkForRemoteErrors(val) : 
+    #   15 nodes produced errors; first error: invalid 'description' argument
     j = 4 
     
     curr_scen <- scenario[j]
     
-    input_loc <- paste("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/", curr_esm, "/", curr_scen,"/", sep = "")
-    output_loc <- paste("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/", curr_esm, "/", curr_scen,"/", sep = "")
+    input_loc <- paste("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/", curr_esm, "/", curr_scen, sep = "")
+    output_loc <- paste("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/", curr_esm, "/", curr_scen, sep = "") 
     output_loc_hist <- paste("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/", curr_esm, '/historical', sep = "")
     input_loc_hist <- paste("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/", curr_esm, '/historical', sep = "")
     
@@ -117,8 +126,8 @@ source('runmodel_yearly.R')
     print((proc.time()-ptm)/60.0)
   
     stopCluster(cl)
-  }
-# }
+   }
+}
 
 ### explore effect of senescence and fix 'bug' which increases biomass ----
 
@@ -142,7 +151,7 @@ library(patchwork)
 compare_senarios<-function(grids){
     
   # trial 
-  # grids = 23000
+  # grids = 22430
   
   plot_grid<-function(result_set_h, 
                     result_set_585,
@@ -463,13 +472,16 @@ inputs_h[dim(inputs_h)[1],]  # all inputs are ok for last time dimention (first 
 
 #### plots ----
 
-# result_set<-readRDS("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/IPSL-CM6A-LR/ssp585/dbpm_output_all_22430_ssp585.rds") 
-# result_set_h<-readRDS("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/IPSL-CM6A-LR/historical/dbpm_output_all_22430_historical.rds") 
+result_set<-readRDS("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/GFDL-ESM4/ssp585/dbpm_output_all_38658_ssp585.rds")
+result_set<-readRDS("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/IPSL-CM6A-LR/picontrol/dbpm_output_all_22430_picontrol.rds")
+result_set<-readRDS("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/IPSL-CM6A-LR/historical/dbpm_output_all_22430_historical.rds")
 
-# dim(result_set_h$V)
-# sum(result_set_h$V[,1980]) # this should be the starting abundance for the ssp126 run 
-# dim(result_set$U)
-# sum(result_set$V[,1]) # this should be the second time step in V (the first being the the abundance above, but not saved)
+str(result_set)
+dim(result_set$GGU)
+result_set$U[100:110, 1:10]
+sum(result_set_h$V[,1980]) # this should be the starting abundance for the ssp126 run
+dim(result_set$U)
+sum(result_set$U[,1]) # this should be the second time step in V (the first being the the abundance above, but not saved)
 
 # sum(result_set_h$U[,1978])
 # sum(result_set$U[,1])
