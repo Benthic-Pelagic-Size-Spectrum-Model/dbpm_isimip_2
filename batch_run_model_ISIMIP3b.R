@@ -11,6 +11,7 @@ rm(list=ls())
 
 # install.packages('zoo', lib = '/home/rhenegha/R_package_library', repos = 'https://cran.rstudio.com/')
 # library(zoo, lib.loc = '/home/rhenegha/R_package_library')
+# install.packages("zoo")
 library(zoo)
 library(parallel)
 
@@ -31,13 +32,14 @@ source('runmodel_yearly.R')
 
 for(i in 1:length(esms)){ # Loop over esms
   
-  i = 1
+  i = 2
   curr_esm <- esms[i]
   
   load(list.files(path=paste("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/", curr_esm, '/',  sep = ""), pattern = "*depth*", full.names = TRUE)) # Load esm depth file
   
   for(j in 1:(length(scenario)-2)){ # Loop over scenario
   
+    j = 1
     # historical saved weekly outputs + spin up = 4.9T, 4 days to run (but on 25 cores)
     # picontrol saved montly outputs = 340G, 2.5 days to run on 45 cores  
   

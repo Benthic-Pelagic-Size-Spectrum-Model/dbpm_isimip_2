@@ -261,13 +261,13 @@ mknetcdf_agg<-function(varname, protocol, inputpath, datapath, savetopath, grids
   
   # # CN  trial
   # i = 1
-  # j = 4
+  # j = 1
   # varname = vars2make[i]
   # protocol = prots[j]
   # inputpath = input_loc
   # datapath = output_loc
   # savetopath = save_loc
-  # igrid = 38659
+  # #igrid = 38659
   # other_param = other_param
   # isave = isave[[j]]
   # yearRange = yearRange[j]
@@ -313,7 +313,12 @@ mknetcdf_agg<-function(varname, protocol, inputpath, datapath, savetopath, grids
    
   # pb = txtProgressBar(min = 0, max = length(grids), initial = 1, style = 3) # Initial progress bar
 
+  # trial 
+  # grids<-1:10
+  
   for (igrid in grids) {
+    
+    # igrid = 1
     
     data_filename <- paste(datapath, protocol, "/", "dbpm_output_all_", igrid, '_', protocol, '.rds', sep = "") 
     
@@ -353,7 +358,7 @@ mknetcdf_agg<-function(varname, protocol, inputpath, datapath, savetopath, grids
       TotalVbiomass <- apply(result_set$V[other_param$ref.det:other_param$Nx,isave]*other_param$dx*10^other_param$x[other_param$ref.det:other_param$Nx],2,sum) 
       # TotalW <- result_set$W[other_param$isave]
       # consumer_spec <- result_set$U[other_param$ref:other_param$Nx,other_param$isave] + result_set$V[other_param$ref.det:other_param$Nx,other_param$isave]
-    
+      
       # CN wcut for new isimip requiremetns (30 and 90 cm as tresholds)
       wcut<-round(c(0.01*30^3,0.01*90^3)) # from cm to weight
       xcutref <- wcut # weight in log scale 
@@ -369,12 +374,17 @@ mknetcdf_agg<-function(varname, protocol, inputpath, datapath, savetopath, grids
       TotalVbiomass<-TotalVbiomass*min(inputs$depth$depth,100)
       # done for below variables as well 
       
+      # define lat and long position on the matrix - otherwise you get corrupted outputs 
+      pos_lon<-which(dimnames(var)[[1]] == inputs$depth$lon)
+      pos_lat<-which(dimnames(var)[[2]] == inputs$depth$lat)
+      # var[pos_lon,pos_lat,1,]
+      
       if (varname=="tcb"){
-        var[inputs$depth$lon,inputs$depth$lat,] <- (TotalUbiomass + TotalVbiomass)
+        var[pos_lon,pos_lat,] <- (TotalUbiomass + TotalVbiomass)
       }
       
       if (varname=="tpb"){ # total pelagic biomass density, all pelagic consumers (trophic level >1, vertebrates and invertebrates)   
-        var[inputs$depth$lon,inputs$depth$lat,] <- TotalUbiomass 
+        var[pos_lon,pos_lat,] <- TotalUbiomass 
       }
       
       if (varname=="bp30cm"){ # biomass density of small pelagics <30 cm    
@@ -383,23 +393,23 @@ mknetcdf_agg<-function(varname, protocol, inputpath, datapath, savetopath, grids
         bp30cm <- apply(result_set$U[other_param$ref:xcutref[1]-1,isave]*other_param$dx*10^other_param$x[other_param$ref:xcutref[1]-1],2,sum) # <30
         # bp30cm <- apply(result_set$U[1:xcutref[1]-1,isave]*other_param$dx*10^other_param$x[1:xcutref[1]-1],2,sum) # <30
         bp30cm<-bp30cm*min(inputs$depth$depth,100)
-        var[inputs$depth$lon,inputs$depth$lat,] <- bp30cm
+        var[pos_lon,pos_lat,] <- bp30cm
       }
       
       if (varname=="bp30to90cm"){ # biomass density of medium pelagics <=30 to 90 cm   
         bp30to90cm <- apply(result_set$U[xcutref[1]:xcutref[2]-1,isave]*other_param$dx*10^other_param$x[xcutref[1]:xcutref[2]-1],2,sum) # >=30, <90 
         bp30to90cm<-bp30to90cm*min(inputs$depth$depth,100)
-        var[inputs$depth$lon,inputs$depth$lat,] <- bp30to90cm
+        var[pos_lon,pos_lat,] <- bp30to90cm
       }
       
       if (varname=="bp90cm"){ # biomass density of large pelagics >=90 cm    
         bp90cm <- apply(result_set$U[xcutref[2]:other_param$Nx,isave]*other_param$dx*10^other_param$x[xcutref[2]:other_param$Nx],2,sum) # >=90
         bp90cm<-bp90cm*min(inputs$depth$depth,100)
-        var[inputs$depth$lon,inputs$depth$lat,] <- bp90cm
+        var[pos_lon,pos_lat,] <- bp90cm
       }
       
       if (varname=="tdb"){ # total demersal biomass density, all demersal consumers (trophic level >1, vertebrates and invertebrates)   
-        var[inputs$depth$lon,inputs$depth$lat,] <- TotalVbiomass 
+        var[pos_lon,pos_lat,] <- TotalVbiomass 
       }
       
       if (varname=="bd30cm"){ # biomass density of small demersal <30 cm  
@@ -408,19 +418,19 @@ mknetcdf_agg<-function(varname, protocol, inputpath, datapath, savetopath, grids
         bd30cm <- apply(result_set$V[other_param$ref:xcutref[1]-1,isave]*other_param$dx*10^other_param$x[other_param$ref:xcutref[1]-1],2,sum) # <30
         # bd30cm <- apply(result_set$V[1:xcutref[1]-1,isave]*other_param$dx*10^other_param$x[1:xcutref[1]-1],2,sum) # <30
         bd30cm<-bd30cm*min(inputs$depth$depth,100)
-        var[inputs$depth$lon,inputs$depth$lat,] <- bd30cm
+        var[pos_lon,pos_lat,] <- bd30cm
       }
       
       if (varname=="bd30to90cm"){ # biomass density of medium demersal <=30 to 90 cm   
         bd30to90cm <- apply(result_set$V[xcutref[1]:xcutref[2]-1,isave]*other_param$dx*10^other_param$x[xcutref[1]:xcutref[2]-1],2,sum) # >=30, <90
         bd30to90cm<-bd30to90cm*min(inputs$depth$depth,100)
-        var[inputs$depth$lon,inputs$depth$lat,] <- bd30to90cm
+        var[pos_lon,pos_lat,] <- bd30to90cm
       }
       
       if (varname=="bd90cm"){ # biomass density of large demersal >=90 cm    
         bd90cm <- apply(result_set$V[xcutref[2]:other_param$Nx,isave]*other_param$dx*10^other_param$x[xcutref[2]:other_param$Nx],2,sum) # >=90
         bd90cm<-bd90cm*min(inputs$depth$depth,100)
-        var[inputs$depth$lon,inputs$depth$lat,] <- bd90cm
+        var[pos_lon,pos_lat,] <- bd90cm
       }
       
     }
@@ -487,22 +497,19 @@ mknetcdf_agg<-function(varname, protocol, inputpath, datapath, savetopath, grids
   
 }
 
-
-
-
 ###### aggregated outputs size-spectrum ----
 
 mknetcdf_agg_sp<-function(varname, protocol, inputpath, datapath, savetopath, grids, other_param, isave, yearRange, curr_esm){
   
   # # CN  trial
-  # i = 1
-  # j = 1
+  # # i = 1
+  # j = 2
   # varname = "tcblog10"
   # protocol = prots[j]
   # inputpath = input_loc
   # datapath = output_loc
   # savetopath = save_loc
-  # igrid = 1
+  # # igrid = 1
   # other_param = other_param
   # isave = isave[[j]]
   # yearRange = yearRange[j]
@@ -535,6 +542,8 @@ mknetcdf_agg_sp<-function(varname, protocol, inputpath, datapath, savetopath, gr
   # get netcdf names
   nc_names <- paste(savetopath, protocol,"/dbpm_", tolower(curr_esm), "_nobasd_", protocol, "_nat_default_",varname, "_global_monthly_", yearRange, ".nc", sep = "") 
   
+  # grids<-1:10
+  
   for (igrid in grids) {
     
     # igrid = 1
@@ -547,7 +556,7 @@ mknetcdf_agg_sp<-function(varname, protocol, inputpath, datapath, savetopath, gr
       result_set <- readRDS(data_filename) 
       
       # load grid inputs
-      input_filename <- paste(inputpath, protocol, "/", "grid" ,'_' ,igrid, "_",curr_esm,"_", protocol,'.rds', sep = "")
+      input_filename <- paste(inputpath, protocol, "/", "grid" ,'_' ,igrid, "_", curr_esm,"_", protocol,'.rds', sep = "")
       
       inputs <- readRDS(input_filename)
 
@@ -603,42 +612,52 @@ mknetcdf_agg_sp<-function(varname, protocol, inputpath, datapath, savetopath, gr
       bd1g<-apply(result_set$V[xcutref[1]:xcutref[2]-1,isave]*other_param$dx*10^other_param$x[xcutref[1]:xcutref[2]-1],2,sum) # >=1 <10
       b1g<-bp1g+ bd1g
       b1g<-b1g*min(inputs$depth$depth,100)
-      var[inputs$depth$lon,inputs$depth$lat,1,] <- b1g
+      
+      # possible problem here..... I don't understand why it worked when printing the other ouputs.... need to check them adn check GFDL!
+      # change throught 
+      # var[inputs$depth$lon,inputs$depth$lat,1,] <- b1g
+      pos_lon<-which(dimnames(var)[[1]] == inputs$depth$lon)
+      pos_lat<-which(dimnames(var)[[2]] == inputs$depth$lat)
+      var[pos_lon,pos_lat,1,] <- b1g
+      # # check 
+      # var[inputs$depth$lon,inputs$depth$lat,1:2,1:2]
+      # var[pos_lon,pos_lat,1:2,1:2]
       
       # bp10g
       bp10g<-apply(result_set$U[xcutref[2]:xcutref[3]-1,isave]*other_param$dx*10^other_param$x[xcutref[2]:xcutref[3]-1],2,sum) # >=10 <100
       bd10g<-apply(result_set$V[xcutref[2]:xcutref[3]-1,isave]*other_param$dx*10^other_param$x[xcutref[2]:xcutref[3]-1],2,sum)
       b10g<-bp10g+ bd10g
       b10g<-b10g*min(inputs$depth$depth,100)
-      var[inputs$depth$lon,inputs$depth$lat,2,] <- b10g
+      var[pos_lon,pos_lat,2,] <- b10g
+      # var[pos_lon,pos_lat,1:2,1:2]
       
       # bp100g
       bp100g<-apply(result_set$U[xcutref[3]:xcutref[4]-1,isave]*other_param$dx*10^other_param$x[xcutref[3]:xcutref[4]-1],2,sum) # >=100 <1000
       bd100g<-apply(result_set$V[xcutref[3]:xcutref[4]-1,isave]*other_param$dx*10^other_param$x[xcutref[3]:xcutref[4]-1],2,sum)
       b100g<-bp100g+ bd100g
       b100g<-b100g*min(inputs$depth$depth,100)
-      var[inputs$depth$lon,inputs$depth$lat,3,] <- b100g
+      var[pos_lon,pos_lat,3,] <- b100g
       
       # bp1000g
       bp1000g<-apply(result_set$U[xcutref[4]:xcutref[5]-1,isave]*other_param$dx*10^other_param$x[xcutref[4]:xcutref[5]-1],2,sum) # >=1000 <10000
       bd1000g<-apply(result_set$V[xcutref[4]:xcutref[5]-1,isave]*other_param$dx*10^other_param$x[xcutref[4]:xcutref[5]-1],2,sum)
       b1000g<-bp1000g+ bd1000g
       b1000g<-b1000g*min(inputs$depth$depth,100)
-      var[inputs$depth$lon,inputs$depth$lat,4,]<- b1000g
+      var[pos_lon,pos_lat,4,]<- b1000g
       
       # bp10000g
       bp10000g<-apply(result_set$U[xcutref[5]:xcutref[6]-1,isave]*other_param$dx*10^other_param$x[xcutref[5]:xcutref[6]-1],2,sum) # >=10000 <100000
       bd10000g<-apply(result_set$V[xcutref[5]:xcutref[6]-1,isave]*other_param$dx*10^other_param$x[xcutref[5]:xcutref[6]-1],2,sum)
       b10000g<-bp10000g + bd10000g
       b10000g<-b10000g*min(inputs$depth$depth,100)
-      var[inputs$depth$lon,inputs$depth$lat,5,] <- b10000g
+      var[pos_lon,pos_lat,5,] <- b10000g
       
       # bp100000g
       bp100000g<-apply(result_set$U[xcutref[6]:length(other_param$x),isave]*other_param$dx*10^other_param$x[xcutref[6]:length(other_param$x)],2,sum) # >=100000
       bd100000g<-apply(result_set$V[xcutref[6]:length(other_param$x),isave]*other_param$dx*10^other_param$x[xcutref[6]:length(other_param$x)],2,sum)
       b100000g<-bp100000g + bd100000g
       b100000g<-b100000g*min(inputs$depth$depth,100)
-      var[inputs$depth$lon,inputs$depth$lat,6,] <- b100000g
+      var[pos_lon,pos_lat,6,] <- b100000g
       
     }
     

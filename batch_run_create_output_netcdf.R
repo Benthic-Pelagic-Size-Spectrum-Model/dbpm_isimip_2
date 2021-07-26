@@ -3,6 +3,8 @@
 
 rm(list=ls())
 
+#install.packages("RNetCDF")
+
 library('RNetCDF')
 setwd("/data/home/camillan/dbpm")
 
@@ -12,7 +14,7 @@ setwd("/data/home/camillan/dbpm")
 
 # CN or chose your model here # NOTE HERE YOU DECIDE THE ESM 
 esms <- c("GFDL-ESM4", "IPSL-CM6A-LR")
-curr_esm <- esms[1]
+curr_esm <- esms[2]
 file = paste0("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/", curr_esm, "/" , curr_esm, "_depth.RData")
 load(file)
 
@@ -80,6 +82,8 @@ yearRange<- c('1850_2100', '1850_2014', '2015_2100', '2015_2100')
 
 #### option 3 ----
 
+result_set <- readRDS(paste0("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/",curr_esm,"/picontrol/dbpm_output_all_1_picontrol.rds"))
+isave_p<-1:dim(result_set$U)[2] 
 result_set <- readRDS(paste0("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/",curr_esm,"/historical/dbpm_output_all_1_historical.rds"))
 isave_h<-1:dim(result_set$U)[2] 
 result_set <- readRDS(paste0("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/",curr_esm,"/ssp126/dbpm_output_all_1_ssp126.rds"))
@@ -87,7 +91,7 @@ isave_126<-1:dim(result_set$U)[2]
 result_set <- readRDS(paste0("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/",curr_esm,"/ssp585/dbpm_output_all_1_ssp585.rds"))
 isave_585<-1:dim(result_set$U)[2] 
 
-isave<- list(isave_h, isave_h, isave_126, isave_585) # picontrol needs to be added instead of historical if picontrol is run 
+isave<- list(isave_p, isave_h, isave_126, isave_585) # picontrol needs to be added instead of historical if picontrol is run 
 
 # other parameters to cut and aggregate outputs 
 # these were originally used (and can still be used) inside the model to aggregate outputs (runmodel_yearly ~ line 316)
@@ -156,14 +160,14 @@ dbpm.variables<-data.frame(name = vars2make,
 
 vars2make <- c('tcb', 'tpb', 'bp30cm', 'bp30to90cm',"bp90cm",'tdb','bd30cm', 'bd30to90cm',"bd90cm")
 
-for(i in 2:length(vars2make)){ 
+for(i in 1:length(vars2make)){
 
-  for(j in 1:length(prots)){
+  # for(j in 1:length(prots)){
     
     # j = 3 # ssp126: for aggregated outputs (all grids, monthly outputs) all variables takes 10 h to run  
     # j = 4 # ssp585: for aggregated outputs (all grids, monthly outputs) all variables takes 10 h  
     # j = 2 # historical: for aggregated outputs (all grids, monthly outputs) all variables takes ~2.2 days 
-    # j = 1 # picontrol for aggregated outputs (all grids, monthly outputs) all variables takes 17 h 
+    j = 1 # picontrol for aggregated outputs (all grids, monthly outputs) all variables takes 17 h
     
     # new round as above but only for histo and spps and given model outputs with no temp effect on senescence 
     # run all together 
@@ -186,31 +190,58 @@ for(i in 2:length(vars2make)){
     # i = 1
     # j = 4
     
+    # GFDL files corrupted - see note below on size-spectrum function
+    # re-running tcb first as you need to include in CMIP paper - then all the other
+    
+    # re-run all but tcb 
+    
     ptm=proc.time()
     options(warn=-1)
     print(paste('Now working on ', vars2make[i], ' for protocol ', prots[j], sep = ''))
     mknetcdf_agg(vars2make[i], prots[j], input_loc, output_loc, save_loc, grids, other_param, isave[[j]] ,yearRange[j], curr_esm)
     print((proc.time()-ptm)/60.0)
     
- }
+ # }
     
-}
+ }
 
 #### for aggregated size-spectrum outputs ----
 
-for(j in 1:length(prots)){
+# for(j in 1:length(prots)){
   
+  j = 1
   # picontrol error then function stopped  
   # Error in `[<-`(`*tmp*`, inputs$depth$lon, inputs$depth$lat, size[2], ,  : 
   #                  subscript out of bounds
   
+  # corrupted file when changed the size bins extremes - try only ssp126 - dowload to desktop and compare with old one 
+  # all seemed to work ok when I printed size-spectrum using old size bins
+  # j = 3 # still corrupted - 21 h to run 
+  # retry - changed matrix indexing to var[pos_lon,pos_lat,1,] where the pos are the position of the lat an dlong withing the matrix 
+  ### IF THIS WORKS you need to check the other outpouts (e.g. tcb) as it's quite strange that the old approach worked for these outputs 
+  # it worked - only 2 h to run (?) warning message 'R version change [4.0.4 -> 4.0.5] detected when restoring session; search path not restored' 
+  # running for the other 2 IpSL scenarios - then check other/previous outputs created with the onld method
+  # hist ok but ssp585 not: Error in result_set$U[xcutref[1]:xcutref[2] - 1, isave] : subscript out of bounds
+  # that was because you forgot to specify a reduced isave and yearrange... 
+  # re-run both with correct values - should take little time
+  # OK worked, 1h historical and 0.5h ssp585
+
+# prots <-c("historical","ssp585")    
+# isave<- list(isave_h, isave_585) 
+# yearRange<- c('1850_2014', '2015_2100')
+
+# install.packages("tidyverse") # long process ... 
+# library("tidyverse") # checking for Julia ... 
+
+# for(j in 1:length(prots)){  
+  
   ptm=proc.time()
   options(warn=-1)
-  print(paste('Now working on ', "tcblog10", ' for protocol ', prots[j], sep = ''))
+  print(paste('Now working on ', "tcblog10", ' for protocol ', prots[j], " ", curr_esm, sep = ''))
   mknetcdf_agg_sp("tcblog10", prots[j], input_loc, output_loc, save_loc, grids, other_param, isave[[j]] ,yearRange[j], curr_esm)
   print((proc.time()-ptm)/60.0)
   
-}
+# }
 
 #### check ----
 
