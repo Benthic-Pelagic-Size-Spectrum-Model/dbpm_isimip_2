@@ -1,0 +1,74 @@
+#Converting shapefiles to xyz via rasters
+
+Libraries
+```{r}
+library(tidyverse)
+library(sf)
+library(raster)
+library(fasterize)
+
+select <- dplyr::select
+
+yannick_dir <- "/rd/gem/private/users/yannickr"
+fao_regions_dir <- "/rd/gem/private/users/yannickr/FAO_AREAS_CWP"
+```
+
+Import fao regions shapefile and create numeric variable for fao areas from the original character
+```{r}
+
+fao_regions_shp <- st_read(file.path(fao_regions_dir, "FAO_AREAS_CWP.shp")) %>% 
+  mutate(F_area = F_AREA %>% as.numeric())
+
+
+#check it plots OK using both variables (both look fine)
+
+ggplot()+
+  geom_sf(data = fao_regions_shp, aes(fill = F_AREA))
+
+
+ggplot()+
+  geom_sf(data = fao_regions_shp, aes(fill = F_area))
+
+```
+
+Some quick checks on the new variable
+```{r}
+unique(fao_regions_shp$F_AREA)
+unique(fao_regions_shp$F_area)
+
+# checking no new levels have been added in 
+
+#same length?
+length(unique(fao_regions_shp$F_AREA))==length(unique(fao_regions_shp$F_area))
+
+#same values?
+unique(fao_regions_shp$F_AREA)==unique(fao_regions_shp$F_area)
+```
+
+Convert shapefile to raster
+```{r}
+
+base_raster <- raster(res = 0.5)
+
+fao_raster <- fasterize(sf = fao_regions_shp, raster = base_raster, field = "F_area", fun = "first")
+
+plot(fao_raster) #looks OK - FAO area numbers are retained
+
+#unique values (except NA) in raster should match unique areas in shapefile  
+sort(unique(values(fao_raster)))==sort(unique(fao_regions_shp$F_AREA))
+
+```
+
+Convert raster to xyz object and export
+```{r}
+
+xyz_file <- rasterToPoints(fao_raster) %>% 
+  as.data.frame() %>% 
+  rename(fao_area = layer) %>% 
+  mutate(fao_area = as.character(fao_area))
+
+
+saveRDS(object = xyz_file, file =  file.path(yannick_dir, "Cells_LatLon_FAO_regions.rds"))
+
+```
+

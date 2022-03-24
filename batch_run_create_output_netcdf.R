@@ -21,12 +21,45 @@ load(file)
 # # locate Noth Sea and dowload for 1 grid sise-spectrum analysis
 # trial<-depth
 # trial$trial<-seq(1:nrow(trial))
-# trial[which(trial$lat == 60.5 & trial$lon == -4.5),] # GFDL 54176 is the gridnum which correspond to the 37014 igrid (following row numbers)
+# trial[which(trial$lat == 60.5 & trial$lon == -4.5),] # GFDL 54176 is the gridnum which correspond to the 37014 igrid (following row numbers) - depends on curr_esm above
 # result_set<-readRDS("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/GFDL-ESM4/ssp585/dbpm_output_all_37014_ssp585.rds")
 # input<-readRDS("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/GFDL-ESM4/ssp585/grid_37014_GFDL-ESM4_ssp585.rds")
 # # trial[which(trial$lat == 60.5 & trial$lon == -4),] # IPSL 54177 is the gridnum which correspond to the 34856 igrid (following row numbers)
 # result_set<-readRDS("/../../rd/gem/private/fishmip_outputs/ISIMIP3b/IPSL-CM6A-LR/ssp585/dbpm_output_all_34856_ssp585.rds")
 # input<-readRDS("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/IPSL-CM6A-LR/ssp585/grid_34856_IPSL-CM6A-LR_ssp585.rds")
+
+# locate cells showing super steep slope in DBPM and dowload for 1 grid sise-spectrum analysis: these have been identified in Plot_maps.Rmd
+#    lon  lat     value
+# 1  -72 26.5 -6.561669
+# 2  -71 26.5 -6.567075
+# 3  -70 26.5 -6.567317
+# 4  -69 26.5 -6.567084
+# 5  -68 26.5 -6.566159
+# 6  -67 26.5 -6.564670
+# 7  -66 26.5 -6.565271
+# 8  -73 25.5 -6.466836
+# 9  -72 25.5 -6.566705
+# 10 -71 25.5 -6.567137
+
+# trial<-depth
+# trial$trial<-seq(1:nrow(trial))
+# trial[which(trial$lat == 26.5 & trial$lon == -72),] # IPSL 28980
+# trial[which(trial$lat == 26.5 & trial$lon == -71),] # 28981
+# trial[which(trial$lat == 26.5 & trial$lon == -70),] # 28982
+# trial[which(trial$lat == 26.5 & trial$lon == -69),] # 28983
+# trial[which(trial$lat == 26.5 & trial$lon == -68),] # 28984
+# trial[which(trial$lat == 26.5 & trial$lon == -67),] # 28985
+# trial[which(trial$lat == 26.5 & trial$lon == -66),] # 28986
+# trial[which(trial$lat == 25.5 & trial$lon == -73),] # 28771
+# trial[which(trial$lat == 25.5 & trial$lon == -72),] # 28772
+# trial[which(trial$lat == 25.5 & trial$lon == -71),] # 28773
+
+# location - we are interested in historical runs for this check 
+# /rd/gem/private/fishmip_outputs/ISIMIP3b/IPSL-CM6A-LR/historical/grid_28980_IPSL-CM6A-LR_historical.rds
+# location of inputs - needed too
+# /rd/gem/private/fishmip_inputs/ISIMIP3b/IPSL-CM6A-LR/historical/grid_28980_IPSL-CM6A-LR_historical.rds
+
+# end grid location
 
 # grids to read in are sequential for the depth file
 grids<-1:dim(depth)[1] 
@@ -100,8 +133,8 @@ isave<- list(isave_p, isave_h, isave_126, isave_585) # picontrol needs to be add
 x = result_set$x
 dx = result_set$dx
 Nx = length(x)
-x1 = -7
-x1.det = -7
+x1 = -3 
+x1.det = -3  
 xmin = -12
 ref = ((x1-xmin)/dx)+1
 ref.det = ((x1.det-xmin)/dx)+1 
@@ -160,14 +193,16 @@ dbpm.variables<-data.frame(name = vars2make,
 
 vars2make <- c('tcb', 'tpb', 'bp30cm', 'bp30to90cm',"bp90cm",'tdb','bd30cm', 'bd30to90cm',"bd90cm")
 
-for(i in 1:length(vars2make)){
+# for(i in 1:length(vars2make)){
 
-  # for(j in 1:length(prots)){
+  i = 3 # new runs with min size = -3: tcb done, tbp running now 
+  
+  for(j in 1:length(prots)){ 
     
     # j = 3 # ssp126: for aggregated outputs (all grids, monthly outputs) all variables takes 10 h to run  
     # j = 4 # ssp585: for aggregated outputs (all grids, monthly outputs) all variables takes 10 h  
     # j = 2 # historical: for aggregated outputs (all grids, monthly outputs) all variables takes ~2.2 days 
-    j = 1 # picontrol for aggregated outputs (all grids, monthly outputs) all variables takes 17 h
+    # j = 1 # picontrol for aggregated outputs (all grids, monthly outputs) all variables takes 17 h
     
     # new round as above but only for histo and spps and given model outputs with no temp effect on senescence 
     # run all together 
@@ -201,9 +236,9 @@ for(i in 1:length(vars2make)){
     mknetcdf_agg(vars2make[i], prots[j], input_loc, output_loc, save_loc, grids, other_param, isave[[j]] ,yearRange[j], curr_esm)
     print((proc.time()-ptm)/60.0)
     
- # }
-    
  }
+    
+ # }
 
 #### for aggregated size-spectrum outputs ----
 

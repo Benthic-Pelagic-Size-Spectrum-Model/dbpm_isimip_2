@@ -1,0 +1,36 @@
+---
+---
+
+Libraries
+```{r}
+
+library(tidyverse)
+library(data.table)
+library(here)
+library(vroom)
+
+yannick_dir <- "/rd/gem/private/users/yannickr"
+
+```
+
+Explore files
+```{r}
+
+(EEZ <- read_csv(file.path(yannick_dir, "Cells_LatLon_EEZ.csv")))
+
+(LMEs <- read_csv(file.path(yannick_dir, "LMESeq.csv")))
+
+(SAUP <- read_csv(file.path(yannick_dir, "SAUPcode_to_Country.csv")))
+
+
+# Looking at the CNumber - this appears the be the iso3n code for the country. This is often the name the same as the admin country but is different when the land masses are territories of other countries
+
+EEZ %>% 
+  filter(CNumber!=A_Code) %>% 
+  select(CNumber, FAOname, A_Code, Admin_Country) %>% 
+  distinct()
+
+
+
+```
+

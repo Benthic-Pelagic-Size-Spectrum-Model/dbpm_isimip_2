@@ -1,0 +1,124 @@
+
+
+
+Libraries
+```{r}
+library(tidyverse)
+library(vroom)
+library(janitor)
+library(here)
+library(tictoc)
+library(parallel)
+
+yannick_dir <- "/rd/gem/private/users/yannickr"
+
+```
+
+
+Get the effort files
+```{r}
+
+effort_file_list <- list.files(file.path(yannick_dir, "effort_mapped_bycountry"), pattern = ".csv", full.names = TRUE)
+length(effort_file_list)
+
+
+industrial_effort_list <- effort_file_list[grep(pattern="_I_", effort_file_list)]
+
+length(industrial_effort_list)
+
+```
+
+
+Vroom is four times faster on a list of 10 and more than twice as fast on a list of 50. Fread from data.table:: is even faster
+
+```{r}
+
+#test on a list of 10
+
+tic()
+test_vroom <- map(effort_file_list[1:10], vroom)
+toc()
+
+tic()
+test_read.csv <- map(effort_file_list[1:10], read.csv)
+toc()
+
+tic()
+test_read.csv <- map(effort_file_list[1:10], data.table::fread)
+toc()
+
+
+#now test on a list of 50 of the files
+tic()
+test_vroom <- map(effort_file_list[1:50], vroom)
+toc()
+
+tic()
+test_read.csv <- map(effort_file_list[1:50], read.csv)
+toc()
+
+
+```
+
+Function for export as RDS to new folder
+```{r}
+
+#Define the function first
+
+export_RDS <- function(this_file){
+  
+  message("processing....", gsub(pattern ="/rd/gem/private/users/yannickr/effort_mapped_bycountry/", "", this_file))
+  
+  this_file_name <- tools::file_path_sans_ext(gsub(pattern ="/rd/gem/private/users/yannickr/effort_mapped_bycountry/", "", this_file))
+  
+  this_new_path <- file.path("/rd/gem/private/users/yannickr/effort_mapped_by_country_compressed/")
+  
+  this_csv <- data.table::fread(this_file)
+  
+  this_rds_path <- paste0(this_new_path, this_file_name, ".rds")
+  
+  if(!file.exists(this_rds_path)==TRUE){
+    saveRDS(object = this_csv, file = paste0(this_new_path, this_file_name, ".rds"))
+  }
+  
+}
+
+
+```
+
+
+
+```{r}
+
+chunk_size <- 1000 #chunk size for processing
+industrial_list_split <- split(industrial_effort_list, ceiling(seq_along(industrial_effort_list)/chunk_size))
+
+for(i in 1:length(industrial_list_split)){
+  
+  file_chunk <- industrial_list_split[[i]]
+  
+  mclapply(X = file_chunk, FUN = export_RDS, mc.cores = 15)
+  
+}
+
+```
+
+Do some checks on the files
+```{r}
+new_folder_contents <- list.files("/rd/gem/private/users/yannickr/effort_mapped_by_country_compressed/")
+
+length(new_folder_contents) == length(industrial_effort_list) #check that number of files is equal to the industrial list - SUCCESS (update this later to address all files)
+
+
+#compare the same file for csv and rds to ckeck that data.table hasn't changed the dimensions or names
+
+rds_ex <- readRDS(file.path(yannick_dir, "effort_mapped_by_country_compressed/mapped_1950_I_8.rds"))
+
+csv_ex <- read_csv(file.path(yannick_dir, "effort_mapped_bycountry/mapped_1950_I_8.csv"))
+
+#names and dimensions seem unchanged
+dim(rds_ex) == dim(csv_ex) 
+names(rds_ex) == names(csv_ex)
+
+```
+
