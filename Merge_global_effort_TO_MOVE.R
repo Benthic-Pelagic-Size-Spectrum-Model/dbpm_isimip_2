@@ -129,7 +129,7 @@ for (i in 1:length(names)){
     
     # summarise effort and other variables by country, gear and FGroup
     trial2<-trial %>% 
-      group_by(Gear, FGroup, Sector, LME, Country, Region) %>% # Length_Category
+      group_by(Gear, FGroup, Sector, LME, Country) %>% # Length_Category
       summarise(NomActive = sum(NomActive, na.rm = TRUE), 
                 EffActive = sum(EffActive, na.rm = TRUE), 
                 NV = sum(NV, na.rm = TRUE),
