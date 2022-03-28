@@ -6,18 +6,20 @@ library(tidyverse)
 library(sf)
 library(raster)
 library(fasterize)
+library(countrycode)
 
 select <- dplyr::select
 
 yannick_dir <- "/rd/gem/private/users/yannickr"
-fao_regions_dir <- "/rd/gem/private/users/yannickr/FAO_AREAS_CWP"
+fao_regions_dir <- "/rd/gem/private/users/yannickr/FAO_AREAS_CWP_NOCOASTLINE"
 ```
 
 Import fao regions shapefile and create numeric variable for fao areas from the original character
 ```{r}
 
-fao_regions_shp <- st_read(file.path(fao_regions_dir, "FAO_AREAS_CWP.shp")) %>% 
-  mutate(F_area = F_AREA %>% as.numeric())
+fao_regions_shp <- st_read(file.path(fao_regions_dir, "FAO_AREAS_CWP_NOCOASTLINE.shp"))
+
+fao_regions_shp <- fao_regions_shp %>%  mutate(F_area = F_AREA %>% as.numeric())
 
 
 #check it plots OK using both variables (both look fine)
@@ -50,9 +52,16 @@ Convert shapefile to raster
 
 base_raster <- raster(res = 0.5)
 
-fao_raster <- fasterize(sf = fao_regions_shp, raster = base_raster, field = "F_area", fun = "first")
+#Use eez file as base to see if that works
+eez_file <- read_csv(file.path(yannick_dir, "Cells_LatLon_EEZ.csv")) %>% select(Lon, Lat, A_Code)
+eez_base_raster <- rasterFromXYZ(eez_file)
+plot(eez_base_raster)
+
+
+fao_raster <- fasterize(sf = fao_regions_shp, raster = eez_base_raster, field = "F_area", fun = "last")
 
 plot(fao_raster) #looks OK - FAO area numbers are retained
+
 
 #unique values (except NA) in raster should match unique areas in shapefile  
 sort(unique(values(fao_raster)))==sort(unique(fao_regions_shp$F_AREA))
@@ -67,8 +76,15 @@ xyz_file <- rasterToPoints(fao_raster) %>%
   rename(fao_area = layer) %>% 
   mutate(fao_area = as.character(fao_area))
 
+xyz_file <- bind_cols(raster::xyFromCell(object = fao_raster, cell = 1:ncell(fao_raster)), 
+                      values(fao_raster)) %>% 
+  rename(fao_area = `...3`)
+  
+
 
 saveRDS(object = xyz_file, file =  file.path(yannick_dir, "Cells_LatLon_FAO_regions.rds"))
 
 ```
+
+
 
