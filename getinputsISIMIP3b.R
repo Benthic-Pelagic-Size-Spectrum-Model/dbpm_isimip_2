@@ -10,6 +10,35 @@ library(abind) #library(abind, lib.loc = '/home/rhenegha/R_package_library')
 # ---------------------------------- STEP 1: GET GCM INPUTS FOR DYNAMIC BENTHIC-PELAGIC SIZE SPECTRUM MODEL
 
 # CN - CN has not run this step yet. this step for CMIP6 similulations was run by Ryan who then provided the inputs 
+# explore LME inputs provided by Ryan 
+
+lme<-read.csv("/rd/gem/private/fishmip_inputs/ISIMIP3a/lme_inputs/obsclim/0.25deg/gfdl-mom6-cobalt2_obsclim_tos_degC_15arcmin_LME_42_monthly_1961_2010.csv")
+head(lme)
+class(lme)
+colnames(lme)
+lme[1:3, 1:6]
+nrow(lme)
+
+lmeRaster<-lme[,c(2,1,4)]
+lmeRaster <- rasterFromXYZ(lmeRaster)
+pdf("/data/home/camillan/dbpm/Output/plot.pdf")
+plot(lmeRaster)
+dev.off()
+
+# TO 
+# do the weighted average of climate input (for all inputs including depth)
+# calculate the total area of LME (save this as part of the inputs file - one file per inputs)
+# do the sum of effort by LME and / by total area of LME
+
+# end result: 1 estimate by month of all inputs - one value only for depth 
+
+# go to step 2 
+
+
+
+
+
+
 
 
 # get gridded GCM inputs for ISIMIP3b phase 1 protocol - from GFDL-ESM4, IPSL-CM6A-LR

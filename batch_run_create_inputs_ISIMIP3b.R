@@ -5,6 +5,16 @@
 
 #-------------------------------------STEP 2: DISAGGREGATE TIME SERIES INPUTS FOR MODEL TO WEEKLY (OR DAILY) TIME STEPS
 
+## CN for LME scale 
+# run getgridin_ISIMIP3b on the LME inputs (as 1 grid cell) 
+# prepare 2 LME to run this function (42, 22) which requires rows as grid cells and inputs as columns
+# there should be a time dimention too 
+# make sure you all small and large phyto using the correct names for this run
+
+
+
+
+
 rm(list=ls())
 # If you need to install these packages, set your package library location here (if needed) 
 # install.packages('zoo', lib = '/home/rhenegha/R_package_library', repos = 'https://cran.rstudio.com/') # 
