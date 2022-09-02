@@ -10,96 +10,635 @@ library(abind) #library(abind, lib.loc = '/home/rhenegha/R_package_library')
 
 # ---------------------------------- STEP 1: GET GCM INPUTS FOR DYNAMIC BENTHIC-PELAGIC SIZE SPECTRUM MODEL
 
-# CN - CN has not run this step yet. this step for CMIP6 similulations was run by Ryan who then provided the inputs 
+#### CN has not run this step for CMIP63b. This step was run by Ryan who then provided the inputs. 
+#### CN is runnig this step for CMIP63a, LME scale (first added part) and CMIP63a gridcell scale. 
+
+#### CMIP63a LME scale inputs adding by CN -----
 # explore LME inputs provided by Ryan 
 
 library(raster)
 library(stringr)
+library(tidyverse)
+library(tictoc)
+library(data.table)
+library(parallel)
 
-file_path<-"/rd/gem/private/fishmip_inputs/ISIMIP3a/lme_inputs/obsclim/0.25deg"
-file_name<-"gfdl-mom6-cobalt2_obsclim_tos_degC_15arcmin_LME_42_monthly_1961_2010.csv"
-lme<-read.csv(file.path(file_path, file_name))
-# class(lme)
-# colnames(lme)
-# lme[1:3, 1:6]
-# nrow(lme)
+#### 1. Define main function: for each LME, and each variable, apply the calc_inputs_LME function -----
 
-# this seems ok - raster is created so that dim 1 is long, dim 2 is lat and dim 3 is time...  
-lmeRaster<-lme[,c(2,1,4:ncol(lme))]
-lmeRaster <- rasterFromXYZ(lmeRaster)
-# dim(lmeRaster)
-# ncol(lme) # with lat, lon and area 
+# 1A. calc_inputs_LME()
+# this function calculates LME fixed weighted.mean depth and total area, 
+# and monthly weighted.mean for each climate variable. 
+# it then add spin up from control to the cliamte variables.  
+calc_inputs_LME<-function(file_name_obs, file_name_crtl, file_path_crtl, file_path_obs){
+  
+  # extract variable name
+  variable<-str_match(file_name_obs, "gfdl-mom6-cobalt2_obsclim_\\s*(.*?)\\s*_15arcmin")[2]
+  
+  # work on CONTROLCLIM first 
+  lme_crtl<-read.csv(file.path(file_path_crtl, file_name_crtl))
+  
+  # then work on OBSERVED 
+  lme<-read.csv(file.path(file_path_obs, file_name_obs))
+  
+  # 2 methods to calculate weighed mean, 1 based on dplyer and cell area, 2 based on raster and cos(lat)
+  # same results for LME 1, depth: method 1 gives 1797.203 and method 2 gives 1797.202
+  # for depth and area, for LME 1 results are the same for obs and crtl as expected   
+  # for LME 1 results are the same for expc-bot_mol_m-2_s-1 (first of inputs) across methods (checked trends). 
+  # assuming this is the case for all inputs... 
+  # NOTE, the advantage of method 2 is plotting LME but this is much slower than method 1. 
+  
+  # # METHOD 1
+  if (variable == "deptho_m"){
+    
+    # calculate fixed variables - mean depth and area of LME 
+    weighted_mean_obs<-lme %>% 
+      summarise(deptho_m = weighted.mean(m, area_m2),
+                area_m2 = sum(area_m2)) %>% 
+      mutate(LME = str_extract(file_name_obs,"(?<=LME_).+(?=_monthly)"))
+    
+    weighted_mean_obs_final<-weighted_mean_obs
+    weighted_mean_crtl_final<-weighted_mean_obs # shortcut if you need to extract crtl values too for all variables
+    
+  }else{
+    
+    # CONTROL 
+    weighted_mean_crtl<-lme_crtl %>% 
+      gather(key = "Date",
+             value = "value",
+             -c("lat", "lon","area_m2")) %>% 
+      group_by(Date) %>% 
+      summarise(weighted_mean_crtl = weighted.mean(value, area_m2)) %>% 
+      ungroup() %>% 
+      mutate(LME = str_extract(file_name_crtl,"(?<=LME_).+(?=_monthly)"),
+             Month = str_extract(Date,"[[:upper:]]+[[:lower:]]+"),
+             Year = str_extract(Date, "\\d+"), 
+             Date = lubridate::my(paste(Month,Year, sep = "." ))) %>% 
+      arrange(Date)
+    
+    # # to plot and compare 
+    # trial<-weighted_mean_crtl %>% 
+    #   group_by(Year) %>% 
+    #   summarise(weighted_mean_crtl = mean(weighted_mean_crtl)) %>% 
+    #   ungroup() %>% 
+    #   mutate(Year = as.numeric(Year))
+    # 
+    # # to compare with methods below ... 
+    # pdf("Output/plot1.pdf")
+    # ggplot(trial, aes(x = Year, y = weighted_mean_crtl))+
+    #   geom_point()+
+    #   geom_line()
+    # dev.off()
+    
+    # calculate spinup which will then be used for the observed
+    spinup<-weighted_mean_crtl %>%
+      select(-Date) %>% 
+      filter(Year >= 1961, Year <=1980) %>% 
+      slice(rep(1:n(), times = 6)) %>%
+      mutate(Year = as.character(rep(1841:1960, each = 12)),
+             Date = lubridate::my(paste(Month,Year, sep = "." ))) 
+    
+    # add spinup to control and check that's all OK 
+    weighted_mean_crtl_final<-weighted_mean_crtl %>% 
+      full_join(spinup) %>% 
+      arrange(Date)
+    
+    # reorder columns 
+    weighted_mean_crtl_final<-weighted_mean_crtl_final[,c("LME", "Date", "Year", "Month", "weighted_mean_crtl")]
+    
+    # rename weighed_mean column according to variable 
+    names(weighted_mean_crtl_final)[5] <- variable
+    
+    # OBSERVED 
+    weighted_mean_obs<-lme %>% 
+      gather(key = "Date",
+             value = "value",
+             -c("lat", "lon","area_m2")) %>% 
+      group_by(Date) %>% 
+      summarise(weighted_mean_obs = weighted.mean(value, area_m2)) %>% 
+      ungroup() %>% 
+      mutate(LME = str_extract(file_name_crtl,"(?<=LME_).+(?=_monthly)"),
+             Month = str_extract(Date,"[[:upper:]]+[[:lower:]]+"),
+             Year = str_extract(Date, "\\d+"), 
+             Date = lubridate::my(paste(Month,Year, sep = "." ))) %>% 
+      arrange(Date)
+    
+    # add spin up to observed and plot to check 
+    spinup<-spinup %>% 
+      rename(weighted_mean_obs = weighted_mean_crtl)
+    
+    weighted_mean_obs_final<-weighted_mean_obs %>% 
+      full_join(spinup) %>% 
+      arrange(Date) 
+    
+    # reorder columns 
+    weighted_mean_obs_final<-weighted_mean_obs_final[,c("LME", "Date", "Year", "Month", "weighted_mean_obs")]
+    
+    # rename weighed_mean column according to variable 
+    names(weighted_mean_obs_final)[5] <- variable
+    
+  }
+  
+  # # METHOD 2
+  # # create raster (dim 1 = long, dim 2 = lat and dim 3 = time)  
+  # lme_crtl_for_raster<-lme_crtl %>% 
+  #   dplyr::select(-area_m2) %>% 
+  #   relocate(lat, .after = lon)
+  # lmeRaster_crtl <- rasterFromXYZ(lme_crtl_for_raster)
+  # 
+  # # WARNING - should I add a crs?!?
+  # 
+  # # # CHECK dimentions were correctly taken into account
+  # # trial<-lme_crtl[,c(2,1,6)]
+  # # trial <- rasterFromXYZ(trial)
+  # # dim(trial)
+  # 
+  # # pdf("/Output/plot.pdf")
+  # # plot(lmeRaster_crtl[[3]])
+  # # dev.off()
+  # 
+  # # pdf("/Output/plot1.pdf")
+  # # plot(trial)
+  # # dev.off()
+  # 
+  # # Calculate the weighted average of climate input (for all inputs including depth)
+  # # mean values - weighted by grid cell latitude 
+  # # https://stackoverflow.com/questions/55230510/calculating-weighted-spatial-global-annual-averages-across-grid-cells-using-netc
+  # 
+  # # raster with latitude cell values 
+  # w_crtl <- init(lmeRaster_crtl, 'y')
+  # # cosine after transforming to radians
+  # w_crtl <- cos(w_crtl  * (pi/180))
+  # # multiply weights with values
+  # x_crtl <- lmeRaster_crtl * w_crtl
+  # 
+  # # CHECK 
+  # # # need to mask the weights too (x_crtl) otherwise denominator is too high
+  # # pdf("Output/plot1.pdf", height = 8, width = 6)
+  # # plot(x_crtl[[1]]) # MULTIPLE DIMENTION 
+  # # dev.off()
+  # # 
+  # # pdf("Output/plot2.pdf", height = 8, width = 6)
+  # # plot(w_crtl) # ONE DIMENTION if using lmeRaster_crtl[[1]] above 
+  # # dev.off()
+  # 
+  # w2_crtl <- mask(w_crtl, lmeRaster_crtl, updatevalue=NA) # MULTIPLE DIMENTIONS 
+  # # w2_crtl<-mask(w_crtl, lmeRaster_crtl[[1]], updatevalue=NA) # ONE DIMENTION - it does not matter but need to check 
+  # 
+  # # # CHECK
+  # # pdf("Output/plot3.pdf", height = 8, width = 6)
+  # # plot(w2_crtl)
+  # # dev.off()
+  # 
+  # # compute weighted average - WARNING is na.rm = TRUE ok??  
+  # weighted_mean_crtl<-cellStats(x_crtl , sum, na.rm = TRUE) / cellStats(w2_crtl , sum, na.rm = TRUE)
+  # 
+  # # transform into data frame 
+  # weighted_mean_crtl<-data.frame(Year = colnames(dplyr::select(lme_crtl,-c("lat","lon","area_m2"))), weighted_mean_crtl = weighted_mean_crtl)
+  # weighted_mean_crtl$LME <- str_extract(file_name_crtl,"(?<=LME_).+(?=_monthly)") # extract LME # keep even if not needed to double check the files
+  # rownames(weighted_mean_crtl)<-NULL
+  # 
+  # weighted_mean_crtl<-weighted_mean_crtl %>% 
+  #   mutate(Month = str_extract(Year,"[[:upper:]]+[[:lower:]]+"),
+  #          Year = str_extract(Year, "\\d+"))
+  # 
+  # # # compare with METHOD 1 
+  # # trial<-weighted_mean_crtl %>% 
+  # #   group_by(Year) %>% 
+  # #   summarise(weighted_mean_crtl = mean(weighted_mean_crtl)) %>% 
+  # #   ungroup() %>% 
+  # #   mutate(Year = as.numeric(Year))
+  # # 
+  # # pdf("Output/plot2.pdf")
+  # # ggplot(trial, aes(x = Year, y = weighted_mean_crtl))+
+  # #   geom_point()+
+  # #   geom_line()
+  # # dev.off()
+  # 
+  # # calculate spinup which will then be used for the observed
+  # spinup<-weighted_mean_crtl %>%
+  #   filter(Year >= 1961, Year <=1980) %>% 
+  #   slice(rep(1:n(), times = 6)) %>%
+  #   mutate(Year = as.character(rep(1841:1960, each = 12))) 
+  # 
+  # # add spinup to control and check that's all OK 
+  # weighted_mean_crtl_final<-weighted_mean_crtl %>% 
+  #   full_join(spinup) %>% 
+  #   mutate(Year = as.numeric(Year)) %>% 
+  #   arrange(Year, Month)
+  # 
+  # # # CHECK 
+  # # # check by year 
+  # # weighted_mean_crtl_final_plot<-weighted_mean_crtl_final %>% 
+  # #   group_by(Year, LME) %>% 
+  # #   summarise(weighted_mean_crtl = mean(weighted_mean_crtl)) %>% 
+  # #   ungroup()
+  # # 
+  # # # plot to check
+  # # pdf("Output/plot.pdf", height = 4, width = 6)
+  # # ggplot(weighted_mean_crtl_final_plot, aes(x = Year, y = weighted_mean_crtl))+
+  # #   geom_line()+
+  # #   annotate("rect",xmin=1961, xmax=1980, ymin=-Inf, ymax=Inf, fill = "#b2e2e2", alpha = 0.4)
+  # # dev.off()
+  # 
+  # # work on OBSERVED
+  # # create raster (dim 1 = long, dim 2 = lat and dim 3 = time)   
+  # lme_for_raster<-lme %>% 
+  #   dplyr::select(-area_m2) %>% 
+  #   relocate(lat, .after = lon)
+  # lmeRaster <- rasterFromXYZ(lme_for_raster)
+  # 
+  # # CHECK 
+  # # trial<-lme[,c(2,1,6)]
+  # # trial <- rasterFromXYZ(trial)
+  # # dim(trial)
+  # 
+  # # pdf("/Output/plot.pdf")
+  # # plot(lmeRaster[[3]])
+  # # dev.off()
+  # 
+  # # pdf("Output/plot1.pdf")
+  # # plot(trial)
+  # # dev.off()
+  # 
+  # # mean values - weighted by grid cell latitude 
+  # # raster with latitude cell values 
+  # w <- init(lmeRaster, 'y')
+  # # cosine after transforming to radians
+  # w <- cos(w  * (pi/180))
+  # # multiply weights with values
+  # x <- lmeRaster * w
+  # 
+  # # # need to mask the weights too otherwise the denominator is too high
+  # # pdf("Output/plot1.pdf", height = 8, width = 6)
+  # # plot(x[[1]]) # MULTIPLE DIMENTION
+  # # dev.off()
+  # # 
+  # # pdf("Output/plot2.pdf", height = 8, width = 6)
+  # # plot(w) # ONE DIMENTION 
+  # # dev.off()
+  # 
+  # w2<-mask(w, lmeRaster, updatevalue=NA) # MULTIPLE DIMENTIONS 
+  # # w2<-mask(w, lmeRaster[[1]], updatevalue=NA) # ONE DIMENTION - it does not seem to matter but need to check 
+  # 
+  # # # CHECK 
+  # # pdf("Output/plot3.pdf", height = 8, width = 6)
+  # # plot(w2) 
+  # # dev.off()
+  # 
+  # # compute weighted average - WARNING is na.rm = TRUE ok??  
+  # weighted_mean_obs<-cellStats(x, sum, na.rm = TRUE) / cellStats(w2, sum, na.rm = TRUE)
+  # 
+  # # data frame 
+  # weighted_mean_obs<-data.frame(Year = colnames(lme[,-c(1,2,3)]), weighted_mean_obs = weighted_mean_obs)
+  # weighted_mean_obs$LME <- str_extract(file_name_obs,"(?<=LME_).+(?=_monthly)")# extract number after LME_ # keep this to double check the files
+  # rownames(weighted_mean_obs)<-NULL
+  # 
+  # # fix date - should we do this and should this be done for both control and observed?  
+  # weighted_mean_obs<-weighted_mean_obs %>% 
+  #   mutate(Month = str_extract(Year,"[[:upper:]]+[[:lower:]]+"),
+  #          Year = str_extract(Year, "\\d+"))
+  # 
+  # # add spin up to observed and plot to check 
+  # spinup<-spinup %>% 
+  #   rename(weighted_mean_obs = weighted_mean_crtl)
+  # 
+  # weighted_mean_obs_final<-weighted_mean_obs %>% 
+  #   full_join(spinup) %>% 
+  #   mutate(Year = as.numeric(Year)) %>% 
+  #   arrange(Year, Month)
+  # 
+  # # add a date column to be able to plot by year and month - again, should we do this? 
+  # weighted_mean_obs_final$Date<-paste(weighted_mean_obs_final$Month,weighted_mean_obs_final$Year, sep = "." )
+  # weighted_mean_obs_final$Date<-lubridate::my(weighted_mean_obs_final$Date)
+  # 
+  # # CHECK
+  # # try by year 
+  # # weighted_mean_final_plot<-weighted_mean_obs_final %>% 
+  # #   group_by(Year, LME) %>% 
+  # #   summarise(weighted_mean_obs = mean(weighted_mean_obs)) %>% 
+  # #   ungroup()
+  # 
+  # # pdf("Output/plot1.pdf", height = 4, width = 6)
+  # # ggplot(weighted_mean_final_plot, aes(x = Year, y = weighted_mean_obs))+
+  # #   geom_line()+
+  # #   annotate("rect",xmin=1961, xmax=1980, ymin=-Inf, ymax=Inf, fill = "#b2e2e2", alpha = 0.4)
+  # # dev.off()
+  # 
+  # # calculate the total area of LME (save this as part of the inputs file - one file per inputs)
+  # # weighted_mean_obs_final$area_m2<-sum(lme$area_m2)
+  # 
+  # # reorder columns 
+  # weighted_mean_obs_final<-weighted_mean_obs_final[,c("LME", "area_m2","Date", "Year", "Month", "weighted_mean_obs")]
+  # 
+  # # rename weighed_mean column according to variable 
+  # names(weighted_mean_obs_final)[6] <- variable
+  
+  return(list(weighted_mean_obs_final = weighted_mean_obs_final, weighted_mean_crtl_final = weighted_mean_crtl_final)) 
+  
+}
 
-# CHECK 
-# trial<-lme[,c(2,1,6)]
-# trial <- rasterFromXYZ(trial)
-# dim(trial)
+# 1.B calc_inputs_all_LME()
+# this function extracts depth adn all climate variable files
+# applies calc_inputs_LME() to each file 
+# and saves a csv with depth and all climate variables as columns for one LME
 
-# pdf("/data/home/camillan/dbpm/Output/plot.pdf")
-# plot(lmeRaster[[3]])
-# dev.off()
+calc_inputs_all_LME<-function(this_LME){
+  
+  # # trial 
+  # this_LME = 1
 
-# pdf("/data/home/camillan/dbpm/Output/plot1.pdf")
-# plot(trial)
-# dev.off()
+  file_path_obs<-"/rd/gem/private/fishmip_inputs/ISIMIP3a/lme_inputs/obsclim/0.25deg"
+  file_path_crtl<-"/rd/gem/private/fishmip_inputs/ISIMIP3a/lme_inputs/ctrlclim/0.25deg"
+  
+  this_LME_new<-paste0("LME_", this_LME, "_")
+  
+  lme_obs<-list.files(file_path_obs, pattern = this_LME_new) 
+  lme_ctrl<-list.files(file_path_crtl, pattern = this_LME_new) 
+  
+  tic()
+  output_obs<-list()
+  output_crtl<-list()
+  
+  for(i in 1:length(lme_obs)){
+  
+    a<-calc_inputs_LME(file_name_obs = lme_obs[[i]], 
+                       file_name_crtl = lme_ctrl[[i]], 
+                       file_path_crtl = file_path_crtl, 
+                       file_path_obs = file_path_obs)
+    output_obs[[i]]<-a$weighted_mean_obs_final
+    output_crtl[[i]]<-a$weighted_mean_crtl_final
+  
+  }
+  toc() 
+  
+  # Method 2 based on raster: 2.8 min (no depth calcualtion)
+  # Method 1 based on dplyr: 1.4 min (with depth)
+  # Method 1 using read_csv(): 1.22 min but see warnings ... 
 
-# TO 
-# do the weighted average of climate input (for all inputs including depth)
-# mean values - weighted by grid cell latitude 
-# https://stackoverflow.com/questions/55230510/calculating-weighted-spatial-global-annual-averages-across-grid-cells-using-netc
+  # all inputs together for one LME 
+  output_obs_all_variables<-Reduce(merge,output_obs)
+  output_crtl_all_variables<-Reduce(merge,output_crtl)
+  
+  # write output files - temporary path - need to save on gem48!
+  this_destination_path_obs <- paste0("/data/home/camillan/dbpm/Output/", "observed_LME_", this_LME, ".csv")
+  this_destination_path_ctrl <- paste0("/data/home/camillan/dbpm/Output/", "control_LME_", this_LME, ".csv")
+  
+  fwrite(x = output_obs_all_variables, file = file.path(this_destination_path_obs))
+  fwrite(x = output_crtl_all_variables, file = file.path(this_destination_path_ctrl))
 
-# raster with latitude cell values 
-w <- init(lmeRaster, 'y')
-# cosine after transforming to radians
-w <- cos(w  * (pi/180))
-# multiply weights with values
-x <- lmeRaster * w
+  # return(output_obs_all_variables = output_obs_all_variables, output_crtl_all_variables = output_crtl_all_variables)
+}
 
-# # need to maks the weights too otherwise denominator too high
-# pdf("Output/plot1.pdf", height = 8, width = 6)
-# plot(x[[1]]) # MULTIPLE DIMENTION
-# dev.off()
+#### 2. apply the functions above to each LME -----
+
+this_LME = seq(1:66)
+
+tic()
+for (i in 1:length(this_LME)){
+
+  # i = 1
+  message("Processing #", i, " of ", length(this_LME))
+  calc_inputs_all_LME(this_LME[[i]])
+
+}
+toc() # 8405.771 - 2.3h
+
+# # in parallel... try again maybe just need time
 # 
-# pdf("Output/plot2.pdf", height = 8, width = 6)
-# plot(w) # ONE DIMENTION 
-# dev.off()
+# chunk_size <- 10 # chunk size for processing
+# this_LME = seq(1:66)
+# lme_obs_new <- split(this_LME, ceiling(seq_along(this_LME)/chunk_size))
+# 
+# tic()
+# for(i in 1:length(lme_obs_new)){
+#   
+#   # i = 1
+#   
+#   file_chunk_obs <- lme_obs_new[[i]]
+#   
+#   message("Processing chunk #", i, " of ", length(lme_obs_new))
+#   
+#   mclapply(X = file_chunk_obs, FUN = calc_inputs_all_LME, mc.cores = 40)
+#   
+# }
+# toc()
 
-w2<-mask(w, lmeRaster, updatevalue=NA) # MULTIPLE DIMENTIONS 
-# w2<-mask(w, lmeRaster[[1]], updatevalue=NA) # ONE DIMENTION - it does not seem to matter but need to check 
+#### 3. read in printed csv file for each LME and merge info into a unique file ----- 
 
-# pdf("Output/plot3.pdf", height = 8, width = 6)
-# plot(w2) 
-# dev.off()
+newly_written_files_observed <- list.files("/data/home/camillan/dbpm/Output", pattern = "observed", full.names = TRUE)
 
-# compute weighted average - WARNING is na.rm = TRUE ok??  
-weighted_mean<-cellStats(x, sum, na.rm = TRUE) / cellStats(w2, sum, na.rm = TRUE)
-# class(weighted_mean)
-# weighted_mean[1:10]
+# pick one randomly and check 
+# map(newly_written_files_observed[[8]], fread)
 
-weighted_mean<-data.frame(Year = colnames(lme[,-c(1,2,3)]), weighted_mean = weighted_mean)
-weighted_mean$LME <- str_extract(file_name,"(?<=LME_).+(?=_monthly)")# extract number after LME_
-rownames(weighted_mean)<-NULL
+# combine files 
+combined_LME_inputs <- rbindlist(mclapply(X = newly_written_files_observed, FUN = fread, mc.cores = 40))
+# head(combined_LME_inputs)
+# sort(unique(combined_LME_inputs$LME)) # WARNING LME 0 missing. 
 
-# Calculate the spin up 
+#### 4. check calculation below in terms of sphy and sphy and adopt same variable names -----
+# function below: 
+# names(pp) <- c("lon", "lat", "t", "lphy", "sphy", "sbt", "sst")
+# depth file: lat, lon, depth 
+# the 2 files are saved directly withing the function as RData  
+# the function is applied to different protocols
+# for CMIP63a protocols are observed at 0.25 deg, control at 0.25 deg, and observed at 1 deg resolution. 
+# however, you are only using observed at LME scale for calibration - so run only this scenario. 
+
+# checked with Julia 
+# sphy = phypico-vint_mol_m-2
+# lphy =  phyc-vint_mol_m-2 - phypico-vint_mol_m-2 
+
+combined_LME_inputs<-combined_LME_inputs %>% 
+  mutate(sphy = `phypico-vint_mol_m-2`, 
+         lphy = `phyc-vint_mol_m-2` - `phypico-vint_mol_m-2`) %>% 
+  select(-c(`phyc-vint_mol_m-2`,`phypico-vint_mol_m-2`))
+
+#### 4. add effort and catches ------
+
+effort<-read_csv("/rd/gem/private/users/yannickr/DKRZ_EffortFiles/effort_histsoc_1841_2010.csv")
+
+# calculate climate inputs by Year as effort is by Year 
+# no - skyp as Julia would like monthly inputs
+# WARNING - should this be annual mean or sum? - CHECKED with JULIA, do mean()
+# WARNING - you've always used means but should this be sum? 
+# CAMI THIS ARE RATES (value/m2) and what you are after is the mean annual RATE mean(value/m2) - 
+# this is not annual absolute value sum(value) as you keep thinking! STOP ASKING. 
+# 1 CMIPs paper comparison (I think, code by Derek - should be OK as this is considered % changes anyways) 
+# + maps of % changes CMIP5 to Andrea
+# for the above, if you did sum() across months instead of mean for all inputs and outputs, 
+# then temperature would be problematic.
+# # checks 
+# a<-c(2,3,4,6,7,8,10)
+# b<-c(3,4,7,8,10,11,12)
+# # percentage change - it's the same 
+# # ((new-original)/original)*100
+# ((mean(b)-mean(a))/mean(a))*100 # 37.5
+# ((sum(b)-sum(a))/sum(a))*100 # 37.5  
+# # difference as used for temperature - it's NOT the same 
+# mean(b)-mean(a) # 2.1 
+# sum(b)-sum(a) # 15 # I guess the code was calculating means ... 
+# (sum(b)-sum(a))/length(a) # 2.1  
+# 2. fishing_effort/08_plotGFDLinputs + code given to Denisse and Romain (so check) 
+# 3. emergentConstraints to check and change 
+# 4. biodiversity work when comparing total abundance - but not used in the end
+#  
+# combined_LME_inputs<-combined_LME_inputs %>% 
+#   group_by(LME, Year, deptho_m, area_m2) %>% 
+#   summarise(`expc-bot_mol_m-2_s-1` = mean(`expc-bot_mol_m-2_s-1`),  
+#             `phyc-vint_mol_m-2` = mean(`phyc-vint_mol_m-2`),
+#             `phypico-vint_mol_m-2` = mean(`phypico-vint_mol_m-2`),
+#             `tob_degC` = mean(`tob_degC`),
+#             `tos_degC` = mean(`tos_degC`)) %>% 
+#   ungroup()
+
+DBPM_LME_climate_inputs<-combined_LME_inputs
+
+# add LME total area and calculate effort/m2  
+LME_area<-combined_LME_inputs %>% 
+  select(LME, area_m2, deptho_m) %>% # this is LME total area and weighted mean depth
+  unique()
+
+# calculate sum of effort by LME/by total area of LME 
+DBPM_LME_effort_input<-effort %>% 
+  group_by(Year, LME) %>% 
+  summarize(NomActive = sum(NomActive)) %>% 
+  ungroup() %>% 
+  full_join(LME_area) %>% 
+  mutate(NomActive_area_m2 = NomActive/area_m2)
+
+# do the same with catches 
+catch<-read_csv("/rd/gem/private/users/yannickr/DKRZ_EffortFiles/calibration_catch_histsoc_1850_2004.csv")
+
+DBPM_LME_catch_input<-catch %>% 
+  mutate(catch_tonnes = Reported+IUU) %>% 
+  group_by(Year, LME) %>% 
+  summarize(catch_tonnes = sum(catch_tonnes)) %>% # catch is in tonnes, checked in FishingEffort Rproject, 
+  # also Reg advise to exclude dischards 
+  ungroup() %>% 
+  full_join(LME_area) %>% 
+  mutate(catch_tonnes_area_m2 = catch_tonnes/area_m2)
+
+DBPM_LME_effort_catch_input<-DBPM_LME_effort_input %>% 
+  full_join(DBPM_LME_catch_input)
+
+head(DBPM_LME_effort_catch_input)
+
+#### 5. Plot to check ----
+
+# WARNING - keep going with the checks
+
+my_theme<-theme_bw()+
+  theme(text = element_text(size = 10), # this should be overwritten by the below
+        plot.title = element_text(size = 10),
+        axis.title = element_text(size = 9),
+        axis.text = element_text(size = 8),
+        legend.title=element_text(size = 9), 
+        legend.text=element_text(size = 8),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(), 
+        legend.key.size = unit(0.1, "cm")) 
 
 
-# calculate the total area of LME (save this as part of the inputs file - one file per inputs)
-lme[1:2,1:4]
-weighted_mean$area_m2<-sum(lme$area_m2)
+plot_df<-split(DBPM_LME_effort_catch_input, DBPM_LME_effort_catch_input$LME)
 
-# do the sum of effort by LME and / by total area of LME - LOAD FASER READING FUNCION... 
-effort<-read.csv("/rd/gem/private/users/yannickr/DKRZ_EffortFiles/effort_histsoc_1841_2010.csv")
-# do the above for 67 LME so that you can add area in effort here and for all LMEs 
+head(plot_df[[2]])
 
-# end result: 1 estimate by month of all inputs - one value only for depth 
+Value = "NomActive"
+toKeep = "1"
 
-# go to step 2 - batch create inputs. 
+plot<-ggplot(data = plot_df[[2]], aes(x = Year, y = NomActive)) +
+  ggtitle(paste("LME", toKeep, sep = " "))+
+  annotate("rect",xmin=1841, xmax=1960, ymin=0, ymax=Inf, fill = "#b2e2e2", alpha = 0.4)+ # spin-up edf8fb
+  annotate("rect",xmin=1961, xmax=2010, ymin=0, ymax=Inf, fill = "#238b45", alpha = 0.4)+ # projection 66c2a4
+  geom_point(size=1)+
+  geom_line() +
+  my_theme
 
+pdf("Output/plot1.pdf")
+plot
+dev.off()
 
+#### 6. go to step 2 - batch create inputs ----
+# in batch create input, the code uses getgridin_ISIMIP3b to calculate intercept and slope 
+# the below are the steps you need from that function (checked with Julia - line 14 to 22)
+source("input_funcs.R")
 
+# name columns as in code
+# head(DBPM_LME_climate_inputs)
+DBPM_LME_climate_inputs_renamed<-DBPM_LME_climate_inputs %>% 
+  select(LME, Date, deptho_m, area_m2, `expc-bot_mol_m-2_s-1`, tob_degC, tos_degC, sphy, lphy) %>% 
+  rename(t = Date, depth = deptho_m, sbt = tob_degC, sst = tos_degC, expcbot = `expc-bot_mol_m-2_s-1`)
 
+DBPM_LME_climate_inputs_renamed<-DBPM_LME_climate_inputs_renamed[,c("LME", "t", "lphy", "sphy", "sbt", "sst", "depth", "area_m2", "expcbot")]
 
+# dplyr method
+DBPM_LME_climate_inputs_slope<-DBPM_LME_climate_inputs_renamed %>%
+  mutate(er = getExportRatio(sphy,lphy,sst,depth),
+         er = ifelse(er<0,0, ifelse(er>1,1,er)),
+         intercept = GetPPIntSlope(sphy,lphy,mmin=10^-14.25,mmid=10^-10.184,mmax=10^-5.25,depth,output="intercept"),
+         slope = GetPPIntSlope(sphy,lphy,mmin=10^-14.25,mmid=10^-10.184,mmax=10^-5.25,depth,output="slope")) %>% 
+  relocate("LME","t","sst","sbt","er","intercept","slope", "sphy", "lphy", "depth", "area_m2","expcbot")
 
+head(DBPM_LME_climate_inputs_slope)
+
+# # tests 
+# getExportRatio<-function(sphy,lphy,sst,depth){
+#   # trial 
+#   sphy = 0.05354391
+#   lphy = 0.006422868
+#   sst = 23.153202
+#   depth = 4123.2588
+#     
+#   
+#   ptotal=sphy+lphy
+#   plarge <- lphy/ptotal
+#   psmall <- sphy/ptotal
+#   er <- (exp(-0.032*sst)*((0.14*psmall)+(0.74*(plarge)))+(0.0228*(plarge)*(depth*0.004)))/(1+(depth*0.004))
+#   return(er)
+# }
+
+# mapply method bease on gridcell inputs and matrix format (as per )
+# # example mapply
+# set.seed(10)
+# 
+# n=10
+# x<-rnorm(n)
+# e<-rnorm(n,0,2)
+# y=0.5+2*x+e
+# 
+# df<-as.data.frame(cbind(y,x))
+# 
+# sf<-function(x,y){
+#   sc = x*y
+#   return(sc)
+# }
+# 
+# df[,"sc"]<-mapply(sf,x = df[,"x"],y = df[,"y"])
+# df[,"check"]<-df[,"x"]*df[,"y"]
+
+#
+# gridinputs<-DBPM_LME_climate_inputs_renamed
+# 
+# gridinputs[,"er"] <- mapply(getExportRatio,sphy=gridinputs[,"sphy"],lphy=gridinputs[,"lphy"],sst=gridinputs[,"sst"],depth=gridinputs[,"depth"])
+# gridinputs[which(gridinputs[,"er"]<0),"er"]<-0
+# gridinputs[which(gridinputs[,"er"]>1),"er"]<-1
+# 
+# gridinputs[,"intercept"]<-mapply(GetPPIntSlope,sphy=gridinputs[,"sphy"],lphy=gridinputs[,"lphy"],mmin=10^-14.25, mmid=10^-10.184,mmax=10^-5.25,depth=gridinputs[,"depth"],output="intercept")
+# gridinputs[,"slope"]<-mapply(GetPPIntSlope,sphy=gridinputs[,"sphy"],lphy=gridinputs[,"lphy"],mmin=10^-14.25, mmid=10^-10.184,mmax=10^-5.25,depth=gridinputs[,"depth"],output="slope")
+# 
+# gridinputs <- gridinputs[,c("LME","t","sst","sbt","er","intercept","slope", "sphy", "lphy", "depth", "area_m2","expcbot")]
+# 
+# head(gridinputs)
+# 
+# DBPM_LME_climate_inputs_slope<-gridinputs
+
+#### 7. Save results ---- 
+
+# WARNING - change location of the temporary and this final files to Gem48
+fwrite(x = DBPM_LME_climate_inputs_slope, file.path("Output/", "DBPM_LME_climate_inputs_slope.csv"))
+fwrite(x = DBPM_LME_effort_catch_input, file.path("Output/", "DBPM_LME_effort_catch_input.csv"))
+
+##### END CN at LME scale -----
 
 
 # get gridded GCM inputs for ISIMIP3b phase 1 protocol - from GFDL-ESM4, IPSL-CM6A-LR
