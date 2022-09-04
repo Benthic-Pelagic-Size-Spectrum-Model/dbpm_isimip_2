@@ -1,12 +1,5 @@
 
 rm(list=ls())
-#install.packages('RNetCDF', lib = '/home/rhenegha/R_package_library', repos = 'https://cran.rstudio.com/')
-#install.packages('reshape2', lib = '/home/rhenegha/R_package_library', repos = 'https://cran.rstudio.com/')
-#install.packages('abind', lib = '/home/rhenegha/R_package_library', repos = 'https://cran.rstudio.com/')
-
-library(RNetCDF) #library(RNetCDF, lib.loc = '/home/rhenegha/R_package_library') # For reading/manipulating netCDFs
-library(reshape2) #library(reshape2, lib.loc = '/home/rhenegha/R_package_library')
-library(abind) #library(abind, lib.loc = '/home/rhenegha/R_package_library')
 
 # ---------------------------------- STEP 1: GET GCM INPUTS FOR DYNAMIC BENTHIC-PELAGIC SIZE SPECTRUM MODEL
 
@@ -14,7 +7,7 @@ library(abind) #library(abind, lib.loc = '/home/rhenegha/R_package_library')
 #### CN is runnig this step for CMIP63a, LME scale (first added part) and CMIP63a gridcell scale. 
 
 #### CMIP63a LME scale inputs adding by CN -----
-# explore LME inputs provided by Ryan 
+# explore LME inputs provided by Ryan on 25/07/2022
 
 library(raster)
 library(stringr)
@@ -352,8 +345,8 @@ calc_inputs_all_LME<-function(this_LME){
   
   this_LME_new<-paste0("LME_", this_LME, "_")
   
-  lme_obs<-list.files(file_path_obs, pattern = this_LME_new) 
-  lme_ctrl<-list.files(file_path_crtl, pattern = this_LME_new) 
+  lme_obs<-list.files(file_path_obs, pattern = this_LME_new, full.names = TRUE) 
+  lme_ctrl<-list.files(file_path_crtl, pattern = this_LME_new, full.names = TRUE) 
   
   tic()
   output_obs<-list()
@@ -380,9 +373,11 @@ calc_inputs_all_LME<-function(this_LME){
   output_crtl_all_variables<-Reduce(merge,output_crtl)
   
   # write output files - temporary path - need to save on gem48!
-  this_destination_path_obs <- paste0("/data/home/camillan/dbpm/Output/", "observed_LME_", this_LME, ".csv")
-  this_destination_path_ctrl <- paste0("/data/home/camillan/dbpm/Output/", "control_LME_", this_LME, ".csv")
-  
+  # this_destination_path_obs <- paste0("/data/home/camillan/dbpm/Output/", "observed_LME_", this_LME, ".csv")
+  # this_destination_path_ctrl <- paste0("/data/home/camillan/dbpm/Output/", "control_LME_", this_LME, ".csv")
+  this_destination_path_obs <- paste0("/rd/gem/private/fishmip_inputs/ISIMIP3a/processed_forcings/lme_inputs/obsclim/0.25deg", "observed_LME_", this_LME, ".csv")
+  this_destination_path_ctrl <- paste0("/rd/gem/private/fishmip_inputs/ISIMIP3a/processed_forcings/lme_inputs/crtlclim/0.25deg", "control_LME_", this_LME, ".csv")
+
   fwrite(x = output_obs_all_variables, file = file.path(this_destination_path_obs))
   fwrite(x = output_crtl_all_variables, file = file.path(this_destination_path_ctrl))
 
@@ -425,7 +420,8 @@ toc() # 8405.771 - 2.3h
 
 #### 3. read in printed csv file for each LME and merge info into a unique file ----- 
 
-newly_written_files_observed <- list.files("/data/home/camillan/dbpm/Output", pattern = "observed", full.names = TRUE)
+# newly_written_files_observed <- list.files("/data/home/camillan/dbpm/Output", pattern = "observed", full.names = TRUE)
+newly_written_files_observed <- list.files("/rd/gem/private/fishmip_inputs/ISIMIP3a/processed_forcings/lme_inputs/obsclim/0.25deg", pattern = "observed", full.names = TRUE)
 
 # pick one randomly and check 
 # map(newly_written_files_observed[[8]], fread)
@@ -444,7 +440,7 @@ combined_LME_inputs <- rbindlist(mclapply(X = newly_written_files_observed, FUN 
 # for CMIP63a protocols are observed at 0.25 deg, control at 0.25 deg, and observed at 1 deg resolution. 
 # however, you are only using observed at LME scale for calibration - so run only this scenario. 
 
-# checked with Julia 
+# checked with Julia 1/09/2022
 # sphy = phypico-vint_mol_m-2
 # lphy =  phyc-vint_mol_m-2 - phypico-vint_mol_m-2 
 
@@ -634,9 +630,12 @@ head(DBPM_LME_climate_inputs_slope)
 
 #### 7. Save results ---- 
 
-# WARNING - change location of the temporary and this final files to Gem48
-fwrite(x = DBPM_LME_climate_inputs_slope, file.path("Output/", "DBPM_LME_climate_inputs_slope.csv"))
-fwrite(x = DBPM_LME_effort_catch_input, file.path("Output/", "DBPM_LME_effort_catch_input.csv"))
+# # WARNING - change location of the temporary and this final files to Gem48
+# fwrite(x = DBPM_LME_climate_inputs_slope, file.path("Output/", "DBPM_LME_climate_inputs_slope.csv"))
+# fwrite(x = DBPM_LME_effort_catch_input, file.path("Output/", "DBPM_LME_effort_catch_input.csv"))
+
+fwrite(x = DBPM_LME_climate_inputs_slope, file.path("/rd/gem/private/fishmip_inputs/ISIMIP3a/processed_forcings/lme_inputs/obsclim/0.25deg/", "DBPM_LME_climate_inputs_slope.csv"))
+fwrite(x = DBPM_LME_effort_catch_input, file.path("/rd/gem/private/fishmip_inputs/ISIMIP3a/processed_forcings/lme_inputs/obsclim/0.25deg/", "DBPM_LME_effort_catch_input.csv"))
 
 ##### END CN at LME scale -----
 
@@ -656,7 +655,47 @@ fwrite(x = DBPM_LME_effort_catch_input, file.path("Output/", "DBPM_LME_effort_ca
 
 # --------------------------------------------------------
 
-setwd('/Users/ryanheneghan 1/Desktop/Papers/FishMIP_CMIP6/')
+### CN prepare input files at for CMIP63a ----
+# download controlclim files from DKRZ on 02/09/2022
+# download all file in this directory to ctrlclim 
+# scp -r b381217@levante.dkrz.de:/work/bb0820/ISIMIP/ISIMIP3a/SecondaryInputData/climate/ocean/ctrlclim/global/monthly/historical/GFDL-MOM6-COBALT2/* ./
+# move one degree files to 1deg folder (from inside 0.25deg folder): mv *onedeg* ../1deg
+# obsclim file dowloaded earlier (no record kept) - obsclim are also in SecondaryInputData folder (but from CESM2 not GFDL)
+# move all files into a subfolder: mv * subfolder (in case you need) 
+
+# Depth files download on 03/09/2022 
+# ctrlclim: /work/bb0820/ISIMIP/ISIMIP3a/SecondaryInputData/climate/ocean/ctrlclim/global/fixed/historical/GFDL-MOM6-COBALT2
+# files: gfdl-mom6-cobalt2_ctrlclim_deptho_15arcmin_global_fixed.nc; gfdl-mom6-cobalt2_ctrlclim_deptho_onedeg_global_fixed.nc
+# obsclim: /work/bb0820/ISIMIP/ISIMIP3a/InputData/climate/ocean/obsclim/global/fixed/historical/GFDL-MOM6-COBALT2
+# files: gfdl-mom6-cobalt2_obsclim_deptho_15arcmin_global_fixed.nc; gfdl-mom6-cobalt2_obsclim_deptho_onedeg_global_fixed.nc
+
+# RECAP on files 
+# obsclim 0.25deg = 39 files 
+# obsclim 1deg = 39 files (78 in all)
+# obsclime DKRZ = 76 files 
+
+# crtlclim all folder = 74 files (2 of which are obsclim)
+# crtlclim DKRZ = 74 files (2 of which are obsclim)
+
+#### code starting ----
+
+rm(list=ls())
+
+#install.packages('RNetCDF', lib = '/home/rhenegha/R_package_library', repos = 'https://cran.rstudio.com/')
+#install.packages('reshape2', lib = '/home/rhenegha/R_package_library', repos = 'https://cran.rstudio.com/')
+#install.packages('abind', lib = '/home/rhenegha/R_package_library', repos = 'https://cran.rstudio.com/')
+
+# # CN 
+# install.packages("RNetCDF")
+# install.packages("plyr")
+# install.packages("reshape2")
+
+library(RNetCDF) #library(RNetCDF, lib.loc = '/home/rhenegha/R_package_library') # For reading/manipulating netCDFs
+library(reshape2) #library(reshape2, lib.loc = '/home/rhenegha/R_package_library')
+library(abind) #library(abind, lib.loc = '/home/rhenegha/R_package_library')
+library(tictoc)
+
+# setwd('/Users/ryanheneghan 1/Desktop/Papers/FishMIP_CMIP6/')
 
 ### FishMIP Phase 1 protocols for ISIMIP3b,
 # 1. picontrol, gcm = c('IPSL-CM6A-LR', 'GFDL-ESM4')
@@ -664,21 +703,56 @@ setwd('/Users/ryanheneghan 1/Desktop/Papers/FishMIP_CMIP6/')
 # 3. ssp126, gcm = c('IPSL-CM6A-LR', 'GFDL-ESM4')
 # 4. ssp585, gcm = c('IPSL-CM6A-LR', 'GFDL-ESM4')
 
+#### CN ISMIP63a adapted function -----
+
 getGCM<-function(gcmPath = './inputs/', protocol, gcm = 'IPSL-CM6A-LR', savepath, getdepth = T, vers = 2){
   
-
-    phydiat_file = list.files(path = paste(gcmPath, gcm, '/', protocol, '/', sep = ''), pattern = '*phydiat-vint*', full.names = TRUE)
-    phyc_file = list.files(path = paste(gcmPath, gcm, '/', protocol, '/', sep = ''), pattern = '*phyc-vint*', full.names = TRUE)
-    to_zb_file = list.files(path = paste(gcmPath, gcm, '/', protocol, '/', sep = ''), pattern = '*thetao-bot*', full.names = TRUE)
-    to_zs_file = list.files(path = paste(gcmPath, gcm, '/', protocol, '/', sep = ''), pattern = '*_tos_*', full.names = TRUE)
-
+  # # CN trial 
+  # gcmPath = "/rd/gem/private/fishmip_inputs/ISIMIP3a/"
+  # protocol = "0.25deg"
+  # gcm = "obsclim"
+  # savepath = "/rd/gem/private/fishmip_inputs/ISIMIP3a/processed_forcings/"
+  # getdepth = T
+  # vers = 3 # see meaning below 
   
-  #get large phy
-  lphy <- var.get.nc(open.nc(phydiat_file), 'phydiat-vint')
+  # getGCM(gcmPath = "/rd/gem/private/fishmip_inputs/ISIMIP3a/", 
+  #        protocol = "0.25deg", 
+  #        gcm = "obsclim", 
+  #        savepath = "/rd/gem/private/fishmip_inputs/ISIMIP3a/processed_forcings/", 
+  #        getdepth = T, 
+  #        vers = 3)
   
-  t <- var.get.nc(open.nc(phydiat_file), 'time')
-  lon <- var.get.nc(open.nc(phydiat_file), 'lon')
-  lat <- var.get.nc(open.nc(phydiat_file), 'lat')
+  
+  # phydiat_file = list.files(path = paste(gcmPath, gcm, '/', protocol, '/', sep = ''), pattern = '*phydiat-vint*', full.names = TRUE)
+  # phyc_file = list.files(path = paste(gcmPath, gcm, '/', protocol, '/', sep = ''), pattern = '*phyc-vint*', full.names = TRUE)
+  # to_zb_file = list.files(path = paste(gcmPath, gcm, '/', protocol, '/', sep = ''), pattern = '*thetao-bot*', full.names = TRUE)
+  # to_zs_file = list.files(path = paste(gcmPath, gcm, '/', protocol, '/', sep = ''), pattern = '*_tos_*', full.names = TRUE)
+  
+  # CN
+  phypico_file = list.files(path = paste(gcmPath, gcm, '/', protocol, '/', sep = ''), pattern = '*phypico-vint*', full.names = TRUE)
+  phyc_file = list.files(path = paste(gcmPath, gcm, '/', protocol, '/', sep = ''), pattern = '*phyc-vint*', full.names = TRUE)
+  to_zb_file = list.files(path = paste(gcmPath, gcm, '/', protocol, '/', sep = ''), pattern = '*_tob_*', full.names = TRUE)
+  to_zs_file = list.files(path = paste(gcmPath, gcm, '/', protocol, '/', sep = ''), pattern = '*_tos_*', full.names = TRUE)
+  
+  # get large phy
+  
+  # lphy <- var.get.nc(open.nc(phydiat_file), 'phydiat-vint')
+  
+  # CN 
+  # checked with Julia 1/09/2022
+  # sphy = phypico-vint_mol_m-2
+  # lphy =  phyc-vint_mol_m-2 - phypico-vint_mol_m-2 
+  
+  lphy <- var.get.nc(open.nc(phyc_file), 'phyc-vint') - var.get.nc(open.nc(phypico_file), 'phypico-vint')
+  
+  # t <- var.get.nc(open.nc(phydiat_file), 'time')
+  # lon <- var.get.nc(open.nc(phydiat_file), 'lon')
+  # lat <- var.get.nc(open.nc(phydiat_file), 'lat')
+  
+  # CN 
+  t <- var.get.nc(open.nc(phypico_file), 'time')
+  lon <- var.get.nc(open.nc(phypico_file), 'lon')
+  lat <- var.get.nc(open.nc(phypico_file), 'lat')
   
   # Format lphy
   dimnames(lphy) <- list(lon=lon,lat=lat,t=t)
@@ -688,7 +762,9 @@ getGCM<-function(gcmPath = './inputs/', protocol, gcm = 'IPSL-CM6A-LR', savepath
   rm(list = ('lphy'))
   
   # sphy
-  sphy <- var.get.nc(open.nc(phyc_file), 'phyc-vint')- var.get.nc(open.nc(phydiat_file), 'phydiat-vint')
+  # sphy <- var.get.nc(open.nc(phyc_file), 'phyc-vint')- var.get.nc(open.nc(phydiat_file), 'phydiat-vint')
+  # CN - see above checked with Julia
+  sphy <- var.get.nc(open.nc(phypico_file), 'phypico-vint')
   
   sphy <- as.vector(sphy)
   sphy <- sphy[!is.na(sphy)]
@@ -711,15 +787,18 @@ getGCM<-function(gcmPath = './inputs/', protocol, gcm = 'IPSL-CM6A-LR', savepath
   pp$sst <- to_zs
   rm(list = ('to_zs'))
   
-  
   # Standardise colnames
   names(pp) <- c("lon", "lat", "t", "lphy", "sphy", "sbt", "sst")
 
+  # CN - explore
+  # head(pp)
   
   if(getdepth == T){
   # get depth
-  depth_nc <- open.nc(list.files(path = paste(gcmPath, gcm, '/', sep = ''), pattern = 'depth', full.names = TRUE))
-  depth <- var.get.nc(depth_nc, 'depth') # Depth in metres
+  # depth_nc <- open.nc(list.files(path = paste(gcmPath, gcm, '/', sep = ''), pattern = 'depth', full.names = TRUE))
+  # CN - NOTE depth files are now in the same folder as input (one depth file for gcm(e.g. obsclim)/protocol(e.g. 0.25deg) combination)
+  depth_nc <- open.nc(list.files(path = paste(gcmPath, gcm, '/', protocol, '/', sep = ''), pattern = 'deptho', full.names = TRUE))
+  depth <- var.get.nc(depth_nc, 'deptho') # Depth in metres
   dimnames(depth) <- list(lon=var.get.nc(depth_nc, 'lon'), lat=var.get.nc(depth_nc, 'lat'))
   depth <- melt(depth)
   names(depth) <- c("lon", "lat", "depth")
@@ -729,15 +808,19 @@ getGCM<-function(gcmPath = './inputs/', protocol, gcm = 'IPSL-CM6A-LR', savepath
   depth <- depth[depth[,'depth'] != 0,]
   
   ## Save depth
-  depth_save_name <- paste(savepath, '/', gcm, '/', gcm, "_depth.RData", sep = '')
+  depth_save_name <- paste(savepath, gcm, '/', protocol, '/', gcm, "_", protocol, "_depth.RData", sep = '')
   save(depth, file = depth_save_name, version = vers)
   }
   
-
   ## Save processed forcings
-  print(paste('Now saving forcings for protocol ', protocol, sep = ''))
-  pp_save_name <- paste(savepath, '/', gcm, '/',protocol, '/', gcm, "_", protocol, ".RData", sep = '')
-  save(pp, file = pp_save_name, version = vers)
+  print(paste('Now saving forcings for', gcm, protocol, sep = ' '))
+  pp_save_name <- paste(savepath, gcm, '/', protocol, '/', gcm, "_", protocol, ".RData", sep = '')
+  save(pp, file = pp_save_name, version = vers) # version = the workspace format version to use. 
+  # NULL specifies the current default format (3). 
+  # Version 1 was the default from R 0.99.0 to R 1.3.1 and 
+  # version 2 from R 1.4.0 to 3.5.0. 
+  # Version 3 is supported from R 3.5.0.
+  # "/rd/gem/private/fishmip_inputs/ISIMIP3a/processed_forcings/obsclim/0.25deg/obsclim_0.25deg.RData"
   
   #remove any objects no longer needed 
   if(getdepth == T){
@@ -745,15 +828,100 @@ getGCM<-function(gcmPath = './inputs/', protocol, gcm = 'IPSL-CM6A-LR', savepath
   }else{rm(pp)}
 }
 
-getGCM(gcmPath = './inputs/', protocol = 'picontrol', gcm = 'IPSL-CM6A-LR', savepath = "./DBPM/processed_forcings/", getdepth = T, vers = 3)
-getGCM(gcmPath = './inputs/', protocol = 'historical', gcm = 'IPSL-CM6A-LR', savepath = "./DBPM/processed_forcings/", getdepth = F, vers = 3)
-getGCM(gcmPath = './inputs/', protocol = 'ssp126', gcm = 'IPSL-CM6A-LR', savepath = "./DBPM/processed_forcings/", getdepth = F, vers = 3)
-getGCM(gcmPath = './inputs/', protocol = 'ssp585', gcm = 'IPSL-CM6A-LR', savepath = "./DBPM/processed_forcings/", getdepth = F, vers = 3)
+#### apply getGCM() to all combo of protocols ----
 
-getGCM(gcmPath = './inputs/', protocol = 'picontrol', gcm = 'GFDL-ESM4', savepath = "./DBPM/processed_forcings/", getdepth = T, vers = 3)
-getGCM(gcmPath = './inputs/', protocol = 'historical', gcm = 'GFDL-ESM4', savepath = "./DBPM/processed_forcings/", getdepth = F, vers = 3)
-getGCM(gcmPath = './inputs/', protocol = 'ssp126', gcm = 'GFDL-ESM4', savepath = "./DBPM/processed_forcings/", getdepth = F, vers = 3)
-getGCM(gcmPath = './inputs/', protocol = 'ssp585', gcm = 'GFDL-ESM4', savepath = "./DBPM/processed_forcings/", getdepth = F, vers = 3)
+# getGCM(gcmPath = './inputs/', protocol = 'picontrol', gcm = 'IPSL-CM6A-LR', savepath = "./DBPM/processed_forcings/", getdepth = T, vers = 3)
+# getGCM(gcmPath = './inputs/', protocol = 'historical', gcm = 'IPSL-CM6A-LR', savepath = "./DBPM/processed_forcings/", getdepth = F, vers = 3)
+# getGCM(gcmPath = './inputs/', protocol = 'ssp126', gcm = 'IPSL-CM6A-LR', savepath = "./DBPM/processed_forcings/", getdepth = F, vers = 3)
+# getGCM(gcmPath = './inputs/', protocol = 'ssp585', gcm = 'IPSL-CM6A-LR', savepath = "./DBPM/processed_forcings/", getdepth = F, vers = 3)
+# 
+# getGCM(gcmPath = './inputs/', protocol = 'picontrol', gcm = 'GFDL-ESM4', savepath = "./DBPM/processed_forcings/", getdepth = T, vers = 3)
+# getGCM(gcmPath = './inputs/', protocol = 'historical', gcm = 'GFDL-ESM4', savepath = "./DBPM/processed_forcings/", getdepth = F, vers = 3)
+# getGCM(gcmPath = './inputs/', protocol = 'ssp126', gcm = 'GFDL-ESM4', savepath = "./DBPM/processed_forcings/", getdepth = F, vers = 3)
+# getGCM(gcmPath = './inputs/', protocol = 'ssp585', gcm = 'GFDL-ESM4', savepath = "./DBPM/processed_forcings/", getdepth = F, vers = 3)
+
+# CN 
+tic()
+getGCM(gcmPath = "/rd/gem/private/fishmip_inputs/ISIMIP3a/", protocol = "0.25deg", gcm = "obsclim", savepath = "/rd/gem/private/fishmip_inputs/ISIMIP3a/processed_forcings/", getdepth = T, vers = 3)
+toc() # 8.533967 min 
+getGCM(gcmPath = "/rd/gem/private/fishmip_inputs/ISIMIP3a/", protocol = "0.25deg", gcm = "ctrlclim", savepath = "/rd/gem/private/fishmip_inputs/ISIMIP3a/processed_forcings/", getdepth = T, vers = 3)
+
+getGCM(gcmPath = "/rd/gem/private/fishmip_inputs/ISIMIP3a/", protocol = "1deg", gcm = "obsclim", savepath = "/rd/gem/private/fishmip_inputs/ISIMIP3a/processed_forcings/", getdepth = T, vers = 3)
+getGCM(gcmPath = "/rd/gem/private/fishmip_inputs/ISIMIP3a/", protocol = "1deg", gcm = "ctrlclim", savepath = "/rd/gem/private/fishmip_inputs/ISIMIP3a/processed_forcings/", getdepth = T, vers = 3)
+
+#### CN Calculate spin-up for CMIP63a climate forcings ----
+
+rm(list=ls())
+
+# load climate variables crtlcli and obsclim at 0.25 degree 
+
+# calcualte spinup for ctrlclim 
+load("/rd/gem/private/fishmip_inputs/ISIMIP3a/processed_forcings/ctrlclim/0.25deg/ctrlclim_0.25deg.RData")
+ctrlclim<-pp
+head(ctrlclim)
+
+# calculate the date... inputs: monthly_1961_2010.nc 
+Date<-seq(as.Date("1961-01-01"), as.Date("2010-12-01"), by="month")
+length(Date)
+t<-unique(ctrlclim$t)
+length(t)
+
+time<-data.frame(t = t, Date = Date)
+
+ctrlclim2<-ctrlclim %>% 
+  full_join(time) %>%  
+  mutate(Year = format(as.Date(Date), "%Y"), 
+         Month = format(as.Date(Date), "%m"))
+
+head(ctrlclim2)
+
+spinup<-ctrlclim2 %>%
+  filter(Year >= 1961, Year <=1980) %>%
+  slice(rep(1:n(), times = 6)) %>% 
+  mutate(Year = as.character(rep(1841:1960, each = 12)),
+         Date2 = lubridate::my(paste(Month,Year, sep = "." )))# WARNING Date2 here only to check - it should be Date 
+
+
+## ARRIVATA QUI - should be ok butre-check 
+# calcualte t ... and remove Year and Month - MAKE sure the format is as the original file 
+# runs : 50 year 
+# 50*12 = 600 months 
+# spinup : 120 years 
+# 120*12 = 1440 months 
+# t1 should be 720 - 1440 = -720
+
+Date_endSpinp<-seq(as.Date("1841-01-01"), as.Date("1960-12-01"), by="month")
+length(Date_endSpinp)
+# OR 
+Date_endSpinp<-unique(spinup$Date2)
+t_endSpinp<-seq((t[1]-length(Date_endSpinp)),t[1]-1)
+
+time_endSpinp<-data.frame(t = t_endSpinp, Date = Date_endSpinp)
+head(time_endSpinp)
+
+
+
+
+
+# add spinup to control and check that's all OK 
+ctrlclim2<-ctrlclim2 %>% 
+  full_join(spinup) %>% 
+  arrange(t)
+
+# add spin up to obsclim
+load("/rd/gem/private/fishmip_inputs/ISIMIP3a/processed_forcings/obsclim/0.25deg/obsclim_0.25deg.RData")
+obsclim<-pp
+head(obsclim)
+
+# add spin up to observed and plot to check
+obsclim2<-obsclim %>% 
+  full_join(spinup) %>% 
+  arrange(t) 
+
+# save new files 
+
+
+# repeat for 1deg resolution 
 
 
 
