@@ -108,20 +108,20 @@ for(i in 1:length(esms)){
     cl <- makeForkCluster(getOption("cl.cores", numcores))
 
     # grids to read in are sequential for the depth file
-    # grids<-1:dim(depth)[1]
+    grids<-1:dim(depth)[1]
 
     # trial 
-    grids<-1
+    # grids<-1
     tic()
-    # Running the model
-    ptm=proc.time()
-    options(warn=-1)
+    # # Running the model
+    # ptm=proc.time()
+    # options(warn=-1)
 
     clusterApply(cl,x=grids,fun=getgridin, curr_esm = curr_esm, curr_scen = curr_scen, save_path = save_path)
 
     print((proc.time()-ptm)/60.0)
 
-    stopCluster(cl)
+    # stopCluster(cl)
     toc() # 1 sec per gridcell... 
 
   }
