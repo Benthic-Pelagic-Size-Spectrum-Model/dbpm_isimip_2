@@ -15,82 +15,60 @@ rm(list=ls())
 
 library(zoo)
 library(parallel)
-
+library(tidyverse)
 
 setwd("/data/home/camillan/dbpm") # Set working directory
 # list.files()
 source("getgridin_ISIMIP3b.R") # Load getgridin function
-numcores <- 12 # How many cores do you have to do the work? # CN 12 in Julia's older version
+# numcores <- 12 # How many cores do you have to do the work? # CN 12 in Julia's older version
+numcores <- 40
 
 # # CN CMIP3b runs 
 # esms <- c("GFDL-ESM4", "IPSL-CM6A-LR")
 # scenario <- c("historical", "picontrol", "ssp126", "ssp585")
-
-# CN CMIP3a runs 
-esms <- c("obsclim", "ctrlsclim")
-scenario <- c("0.25deg", "1deg")
-
-tic()
-for(i in 1:length(esms)){
- 
-  # trial
-  i = 1
-  
-  curr_esm <- esms[i]
- 
-  # load(list.files(path=paste("./processed_forcings/", curr_esm, '/',  sep = ""), pattern = "*depth*", full.names = TRUE)) # Load esm depth file
-  # CN CMIP63b
-  # load(list.files(path=paste("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/", curr_esm, '/',  sep = ""), pattern = "*depth*", full.names = TRUE)) # Load esm depth file # CN new location on gem48
-  # list.files("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/")
-  
-  for(j in 1:length(scenario)){
-    
-    # trial 
-    j = 1
-    
-    curr_scen <- scenario[j]
-    
-    # CN load depth file - one for each esm/scenario combination
-    load(list.files(path=paste("/rd/gem/private/fishmip_inputs/ISIMIP3a/processed_forcings/", curr_esm, '/',  curr_scen ,sep = ""), pattern = "*deptho*", full.names = TRUE)) 
-    
-    # save_path=paste("./processed_forcings/", curr_esm, '/', curr_scen, '/',  sep = "") # Where do you want the grid files to be saved?
-    # CN CMIP63b
-    # save_path=paste("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/", curr_esm, '/', curr_scen, '/',  sep = "") # Where do you want the grid files to be saved? # CN new path 
-    # CN CMIP63a - WARNING should this be the same path to where inputs are saved from step 1? ADDED gridcell - need to create folder 
-    save_path=paste("/rd/gem/private/fishmip_inputs/ISIMIP3a/processed_forcings/", curr_esm, '/', curr_scen, '/', 'gridcell/' ,sep = "") 
-    
-    # load(list.files(path=paste("./processed_forcings/", curr_esm, '/',  sep = ""), pattern = paste("*_", curr_scen,"*", sep = ""), full.names = TRUE)) # Load curr esm, curr scen forcings
-    # CN CMIP63b
-    # load(list.files(path=paste("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/", curr_esm, '/',  sep = ""), pattern = paste("*_", curr_scen,"*", sep = ""), full.names = TRUE)) # Load curr esm, curr scen forcings # CN new location 
-    # CN CMIP63a -  WARNING - this will load both depth and climate dataset...unless I specify obsclim but need to do this better. I could just use the above and do not specify any pattern.
-    # but myght be risky if runnig 3b in the future?? 
-    load(list.files(path=paste("/rd/gem/private/fishmip_inputs/ISIMIP3a/processed_forcings/", curr_esm, '/',  sep = ""), pattern = paste("*_", curr_scen,"*", sep = ""), full.names = TRUE))
-    # CHECK 
-    list.files(path=paste("/rd/gem/private/fishmip_inputs/ISIMIP3a/processed_forcings/", curr_esm, '/', curr_scen, sep = ""), pattern = "*obsclim*", full.names = TRUE)
-    
-    # cl <- makeCluster(numcores,type="FORK",outfile='')
-    cl <- makeForkCluster(getOption("cl.cores", numcores))
-    
-    # # CN now commented not to overwrite stuff .... 
-    # # grids to read in are sequential for the depth file
-    # grids<-1:dim(depth)[1]
-    # 
-    # # Running the model
-    # ptm=proc.time()
-    # options(warn=-1)
-    # 
-    # clusterApply(cl,x=grids,fun=getgridin, curr_esm = curr_esm, curr_scen = curr_scen, save_path = save_path)
-    # 
-    # print((proc.time()-ptm)/60.0)
-    # 
-    # stopCluster(cl)
-    
-    
-  }
-   
-}
-
-toc()
+# 
+# tic()
+# for(i in 1:length(esms)){
+#   
+#   curr_esm <- esms[i]
+#  
+#   # load(list.files(path=paste("./processed_forcings/", curr_esm, '/',  sep = ""), pattern = "*depth*", full.names = TRUE)) # Load esm depth file
+#   # CN CMIP63b
+#   load(list.files(path=paste("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/", curr_esm, '/',  sep = ""), pattern = "*depth*", full.names = TRUE)) # Load esm depth file # CN new location on gem48
+#   # list.files("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/")
+#   
+#   for(j in 1:length(scenario)){
+#     
+#     curr_scen <- scenario[j]
+#     
+#     # save_path=paste("./processed_forcings/", curr_esm, '/', curr_scen, '/',  sep = "") # Where do you want the grid files to be saved?
+#     # CN CMIP63b
+#     save_path=paste("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/", curr_esm, '/', curr_scen, '/',  sep = "") # Where do you want the grid files to be saved? # CN new path 
+#     
+#     # load(list.files(path=paste("./processed_forcings/", curr_esm, '/',  sep = ""), pattern = paste("*_", curr_scen,"*", sep = ""), full.names = TRUE)) # Load curr esm, curr scen forcings
+#     # CN CMIP63b
+#     load(list.files(path=paste("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/", curr_esm, '/',  sep = ""), pattern = paste("*_", curr_scen,"*", sep = ""), full.names = TRUE)) # Load curr esm, curr scen forcings # CN new location 
+#     
+#     # cl <- makeCluster(numcores,type="FORK",outfile='')
+#     cl <- makeForkCluster(getOption("cl.cores", numcores))
+#     
+#     # grids to read in are sequential for the depth file
+#     grids<-1:dim(depth)[1]
+#     
+#     # Running the model
+#     ptm=proc.time()
+#     options(warn=-1)
+# 
+#     clusterApply(cl,x=grids,fun=getgridin, curr_esm = curr_esm, curr_scen = curr_scen, save_path = save_path)
+# 
+#     print((proc.time()-ptm)/60.0)
+# 
+#     stopCluster(cl)
+#     
+#     
+#   }
+#    
+# }
 
 #user   system  elapsed 
 #3.5566   3.4890 226.9408 
@@ -109,11 +87,81 @@ toc()
 #user    system   elapsed 
 #1.668067  1.440400 88.715533 
 
-# check there is data CMIP63b:  
-getwd()
-setwd("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/GFDL-ESM4/picontrol")
-getwd()
-list.files()
-a<-readRDS("grid_108_GFDL-ESM4_picontrol.rds")
+# # check there is data CMIP63b:  
+# getwd()
+# setwd("/../../rd/gem/private/fishmip_inputs/ISIMIP3b/GFDL-ESM4/picontrol")
+# getwd()
+# list.files()
+# a<-readRDS("grid_108_GFDL-ESM4_picontrol.rds")
+# head(a)
+
+# CN CMIP3a runs 
+# esms <- c("obsclim", "ctrlsclim")
+scenario <- c("1deg", "0.25deg")
+
+for(i in 1:length(esms)){
+  
+  # trial 
+  i = 1
+    
+  curr_scen <- scenario[i]
+    
+  # CN load depth file - one for both scenarios (obsclim adn ctrlclim)
+  load(list.files(path=paste("/rd/gem/private/fishmip_inputs/ISIMIP3a/processed_forcings/", 
+                             "obsclim", '/',  
+                             curr_scen ,sep = ""), 
+                  pattern = "*deptho*", full.names = TRUE)) 
+    
+  # CN CMIP63a
+  save_path_obsclim=paste("/rd/gem/private/fishmip_inputs/ISIMIP3a/processed_forcings/", 
+                          "obsclim", '/', 
+                          curr_scen, '/', 
+                          'gridcell/' ,
+                          sep = "") 
+  save_path_ctrlclim=paste("/rd/gem/private/fishmip_inputs/ISIMIP3a/processed_forcings/", 
+                          "ctrlclim", '/', 
+                          curr_scen, '/', 
+                          'gridcell/' ,
+                          sep = "") 
+    
+  # CN CMIP63a 
+  load(file.path(paste("/rd/gem/private/fishmip_inputs/ISIMIP3a/processed_forcings/", 
+                       "ctrlclim", '/',
+                       curr_scen ,  
+                       sep = ""), 
+                 paste("ctrlclim", '_',curr_scen ,".RData",  sep = "")))
+  ctrlclim<-pp
+  
+  load(file.path(paste("/rd/gem/private/fishmip_inputs/ISIMIP3a/processed_forcings/", 
+                       "obsclim", '/',
+                       curr_scen ,  
+                       sep = ""), 
+                 paste("obsclim", '_',curr_scen ,".RData",  sep = "")))
+  obsclim<-pp
+    
+  cl <- makeForkCluster(getOption("cl.cores", numcores))
+    
+  grids<-1:dim(depth)[1]
+  # grids = 1
+  # Running the model
+  ptm=proc.time()
+  options(warn=-1)
+
+  clusterApply(cl,x=grids,fun=getgridin_CMIP63a,
+               curr_scen = curr_scen,
+               save_path_ctrlclim = save_path_ctrlclim,
+               save_path_obsclim = save_path_obsclim,
+               ctrlclim = ctrlclim, 
+               obsclim = obsclim)
+
+  print((proc.time()-ptm)/60.0)
+  stopCluster(cl)
+  
+}
+
+# check there is data CMIP63a: OK - WARNING not sre how weekly time steps are calculated (see line 189 in getgridin_ISMIP3b.r) 
+a<-readRDS("/rd/gem/private/fishmip_inputs/ISIMIP3a/processed_forcings/obsclim/1deg/gridcell/grid_1_obsclim_1deg.rds")
+a<-a$ts
 head(a)
+
 
