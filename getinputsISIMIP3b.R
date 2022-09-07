@@ -850,191 +850,239 @@ getGCM(gcmPath = "/rd/gem/private/fishmip_inputs/ISIMIP3a/", protocol = "1deg", 
 getGCM(gcmPath = "/rd/gem/private/fishmip_inputs/ISIMIP3a/", protocol = "1deg", gcm = "ctrlclim", savepath = "/rd/gem/private/fishmip_inputs/ISIMIP3a/processed_forcings/", getdepth = T, vers = 3)
 
 #### CN Calculate spin-up for CMIP63a climate forcings ----
-## NO - go to batch_run_create_inputs_ISIMIP3b and getgridin_ISIMIP3b.R 
+## go to batch_run_create_inputs_ISIMIP3b and getgridin_ISIMIP3b.R 
+## Option also slow - might need to create a spinup as scenarios file 
 
-# rm(list=ls())
-# 
-# library(tidyverse)
-# library(tictoc)
-# library(data.table)
-# library(parallel)
-# library(dtplyr)
-# 
-# # # calc spinup for ctrlclim 
-# # load("/rd/gem/private/fishmip_inputs/ISIMIP3a/processed_forcings/ctrlclim/1deg/ctrlclim_1deg.RData")
-# # ctrlclim<-pp
-# # 
-# # load("/rd/gem/private/fishmip_inputs/ISIMIP3a/processed_forcings/ctrlclim/1deg/ctrlclim_1deg_depth.RData")
-# # gridnum_depth<-select(depth, - depth)
-# # nrow(gridnum_depth) # 41934 lat/lon cell
-# # 
-# # load("/rd/gem/private/fishmip_inputs/ISIMIP3a/processed_forcings/obsclim/1deg/obsclim_1deg.RData")
-# # obsclim<-pp
-# 
-# # assume they are the same... 
-# # load("/rd/gem/private/fishmip_inputs/ISIMIP3a/processed_forcings/obsclim/1deg/obsclim_1deg_depth.RData")
-# # gridnum_depth<-select(depth, - depth)
-# # nrow(gridnum_depth) # 41934 lat/lon cell
-# 
-# calc_input_spinup_gridcell<-function(inputPath, protocol, subset){
-#   
-#   # # # trial
-#   # inputPath<-"/rd/gem/private/fishmip_inputs/ISIMIP3a/processed_forcings/"
-#   # protocol = "1deg"
-# 
-#   input_file_crtlclim <- file.path(paste0(inputPath, "ctrlclim", '/', protocol), paste0("ctrlclim", '_', protocol, ".RData"))
-#   load(input_file_crtlclim)
-#   ctrlclim<-lazy_dt(pp)
-#   # ctrlclim<-pp
-#   rm(input_file_crtlclim, pp)
-#   
-#   input_file_obsclim <- file.path(paste0(inputPath, "obsclim", '/', protocol), paste0("obsclim", '_', protocol, ".RData"))
-#   load(input_file_obsclim)
-#   obsclim<-lazy_dt(pp)
-#   # obsclim<-pp
-#   rm(input_file_obsclim, pp)
-#   
-#   
-#   gridnum_depth <- file.path(paste0(inputPath, "obsclim", '/', protocol), paste0("obsclim", '_', protocol,"_depth", ".RData"))
-#   load(gridnum_depth)
-#   gridnum_depth<-lazy_dt(depth) %>% select(- depth)
-# 
-#   # calculate timesteps, as t is confusing (inputs: monthly_1961_2010.nc) 
-#   # and add gridnumber from depth file 
-#   Date<-seq(as.Date("1961-01-01"), as.Date("2010-12-01"), by="month")
-#   t<-ctrlclim %>% select(t) %>% unique()
-#   time<-data.frame(t = t, Date = Date)
-#   time<-lazy_dt(time)
-#   rm(Date,t)
-#   
-#   # CONTROL 
-#   tic()
-#   ctrlclim<-ctrlclim %>% 
-#     full_join(time) %>%  
-#     full_join(gridnum_depth) %>% 
-#     arrange(Date, gridnum)
-#   toc() # 21 sec # 5 with lazy
-# 
-#   # calculate spin-up
-#   tic()
-#   spinup<-ctrlclim %>%
-#     filter(Date >= "1961-01-01", Date <="1980-12-01") %>%
-#     slice(rep(1:n(), times = 6)) #%>% 
-#     # arrange(Date, gridnum)
-#   toc() # 13 sec # 0 with lazy
-# 
-#   # calc new date and t for spin-up 
-#   Date = seq(as.Date("1841-01-01"), as.Date("1960-12-01"), by="months")
-#   new_t<-seq((720-length(Date)),720-1) # WARNING - need to fix
-#   # new_t<-seq((t[1]-length(Date)),t[1]-1)
-#   Date_df<-data.frame(Date = Date, t = new_t)
-#   Date_df<-lazy_dt(Date_df)
-#   rm(Date, new_t)
-#   # head(Date_df)
-#   
-#   tic()
-#   new_date<-gridnum_depth %>% 
-#     full_join(Date_df, by = character()) %>% 
-#     arrange(Date, gridnum)
-#   toc() # 30 sec # 0 with lazy
-#   # rm(gridnum_depth)
-#   
-#   # replace new date to spin-up file 
-#   tic()
-#   spinup<-spinup %>% 
-#     select(-Date, -t) 
-#   toc()
-#   
-#   # trying to figure out problem 
-#   new_date<-as.data.frame(new_date)
-#   Date_new<-new_date$Date
-#   t_new<-new_date$t
-#   rm(new_date)
-#   # length(Date_new) # 60384960
-#   # length(t_new) # 60384960
-#   
-#   tic()
-#   spinup<-spinup %>% 
-#     mutate(Date = Date_new, 
-#            t = t_new) 
-#   toc()# 0.01
-#   # rm(Date_new, t_new)
-#   
-#   # add spinup to ctrlclim  
-#   tic()
-#   ctrlclim<-ctrlclim %>% 
-#     full_join(spinup) %>% 
-#     arrange(Date, gridnum)
-#   toc() # 20 sec # 1 with lazy 
-#   # rm(spinup)
-#   
-#   tic()
-#   ctrlclim<-as_tibble(ctrlclim)
-#   toc() # 593.884 # 10 min 
-# 
-#   # print final input_file_crtlclim file and remove from environment 
-#   crtlclim_withSpinUP <- file.path(paste0(inputPath, "ctrlclim", '/', protocol), paste0("ctrlclim", '_', protocol,"_withSpinUp", ".RData"))
-#   save(ctrlclim, file = crtlclim_withSpinUP, version = 3)
-#   # fwrite(x = ctrlclim, file = crtlclim_withSpinUP)
-#   rm(ctrlclim)
-#   
-#   # OBSERVED 
-#   # add spinup to obsclim file 
-#   tic()
-#   obsclim<-obsclim %>% 
-#     full_join(time) %>%  
-#     full_join(gridnum_depth) %>% 
-#     arrange(Date, gridnum)
-#   toc() # 21 sec
-#   
-#   # add spinup to crtlclim
-#   tic()
-#   obsclim<-obsclim %>% 
-#     full_join(spinup)
-#   toc() # 20 sec 
-#   
-#   # arrange file as per original
-#   tic()
-#   obsclim<-obsclim %>% 
-#     arrange(Date, gridnum)
-#   toc() # 24 sec
-#   
-#   # # Plot one gridcell to check - seems OK
-#   # trial<-obsclim %>%
-#   #   filter(gridnum == 1) %>%
-#   #   mutate(Year = format(as.Date(Date), "%Y"))  %>%
-#   #   group_by(Year) %>%
-#   #   summarise(lphy = mean(lphy)) %>%
-#   #   ungroup() %>%
-#   #   mutate(Year = as.numeric(Year))
-#   # 
-#   # plot<-ggplot(trial, aes(x = Year, y = lphy))+
-#   #   geom_point()+
-#   #   geom_line()+
-#   #   annotate("rect", xmin=1961, xmax=1980, ymin=-Inf, ymax=Inf, fill = "#b2e2e2", alpha = 0.4)
-#   # 
-#   # pdf("Output/plot1_lazy.pdf", height = 4, width = 6)
-#   # plot
-#   # dev.off()
-#   
-#   tic()
-#   obsclim<-as_tibble(obsclim)
-#   toc() # 593.884 # 10 min 
-#   
-#   # print final input_file_crtlclim file and remove from environment 
-#   obsclim_withSpinUP <- file.path(paste0(inputPath, "obsclim", '/', protocol), paste0("obsclim", '_', protocol,"_withSpinUp", ".RData"))
-#   save(obsclim, file = obsclim_withSpinUP, version = 3)
-#   rm(obsclim, spinup, time) # ANYTHING ELSE? 
-# 
-# }
-# 
+rm(list=ls())
+
+library(tidyverse)
+library(tictoc)
+library(data.table)
+library(parallel)
+library(dtplyr)
+library(data.table)
+
+# # calc spinup for ctrlclim
+# load("/rd/gem/private/fishmip_inputs/ISIMIP3a/processed_forcings/ctrlclim/1deg/ctrlclim_1deg.RData")
+# ctrlclim<-pp
+#
+# load("/rd/gem/private/fishmip_inputs/ISIMIP3a/processed_forcings/ctrlclim/1deg/ctrlclim_1deg_depth.RData")
+# gridnum_depth<-select(depth, - depth)
+# nrow(gridnum_depth) # 41934 lat/lon cell
+#
+# load("/rd/gem/private/fishmip_inputs/ISIMIP3a/processed_forcings/obsclim/1deg/obsclim_1deg.RData")
+# obsclim<-pp
+
+# assume they are the same...
+# load("/rd/gem/private/fishmip_inputs/ISIMIP3a/processed_forcings/obsclim/1deg/obsclim_1deg_depth.RData")
+# gridnum_depth<-select(depth, - depth)
+# nrow(gridnum_depth) # 41934 lat/lon cell
+
+# calculate the spinup only for crtl and run it as it was a scenario... 
+
+calc_input_spinup_gridcell<-function(inputPath, protocol, subset){
+
+  # # # # trial
+  # inputPath<-"/rd/gem/private/fishmip_inputs/ISIMIP3a/processed_forcings/"
+  # protocol = "1deg"
+
+  input_file_crtlclim <- file.path(paste0(inputPath, "ctrlclim", '/', protocol), paste0("ctrlclim", '_', protocol, ".RData"))
+  load(input_file_crtlclim)
+  # ctrlclim<-lazy_dt(pp)
+  ctrlclim<-pp
+  # head(ctrlclim)
+  rm(input_file_crtlclim, pp)
+
+  # input_file_obsclim <- file.path(paste0(inputPath, "obsclim", '/', protocol), paste0("obsclim", '_', protocol, ".RData"))
+  # load(input_file_obsclim)
+  # obsclim<-lazy_dt(pp)
+  # # obsclim<-pp
+  # rm(input_file_obsclim, pp)
+
+  gridnum_depth <- file.path(paste0(inputPath, "ctrlclim", '/', protocol), paste0("ctrlclim", '_', protocol,"_depth", ".RData"))
+  load(gridnum_depth)
+  # gridnum_depth<-lazy_dt(depth) %>% select(- depth)
+  gridnum_depth<-depth %>% select(- depth)
+  # head(gridnum_depth)
+  
+  # calculate timesteps, as t is confusing (inputs: monthly_1961_2010.nc)
+  # and add gridnumber from depth file
+  Date<-seq(as.Date("1961-01-01"), as.Date("2010-12-01"), by="month")
+  t<-ctrlclim %>% select(t) %>% unique()
+  time<-data.frame(t = t, Date = Date)
+  # time<-lazy_dt(time)
+  rm(Date)
+  # head(time)
+  
+  # CONTROL
+  tic()
+  ctrlclim<-ctrlclim %>%
+    full_join(time) %>%
+    full_join(gridnum_depth) %>%
+    arrange(Date, gridnum)
+  toc() # 21 sec # 5 with lazy
+
+  # head(ctrlclim)
+  
+  # calculate spin-up
+  tic()
+  spinup<-ctrlclim %>%
+    filter(Date >= "1961-01-01", Date <="1980-12-01") %>%
+    slice(rep(1:n(), times = 6)) #%>%
+    # arrange(Date, gridnum)
+  toc() # 13 sec # 0 with lazy
+
+  # head(spinup)
+  
+  # calc new date and t for spin-up
+  Date = seq(as.Date("1841-01-01"), as.Date("1960-12-01"), by="months")
+  # new_t<-seq((720-length(Date)),720-1) # WARNING - need to fix
+  new_t<-seq((time$t[1]-length(Date)),time$t[1]-1)
+  Date_df<-data.frame(Date = Date, t = new_t)
+  # Date_df<-lazy_dt(Date_df)
+  rm(Date, new_t)
+  # head(Date_df)
+
+  tic()
+  new_date<-gridnum_depth %>%
+    full_join(Date_df, by = character()) %>%
+    arrange(Date, gridnum)
+  toc() # 30 sec # 0 with lazy
+  # rm(new_date)
+
+  # head(new_date)
+  
+  # replace new date to spin-up file
+  # dtplyr
+  tic()
+  spinup<-spinup %>%
+    select(-Date, -t)
+  toc()
+
+  # head(spinup)
+  
+  # trying to figure out problem
+  # new_date<-as.data.frame(new_date)
+  Date_new<-new_date$Date
+  t_new<-new_date$t
+  rm(new_date)
+  length(Date_new) # 60384960
+  length(t_new) # 60384960
+  nrow(spinup) # 60384960
+
+  tic()
+  spinup<-spinup %>%
+    mutate(Date = Date_new,
+           t = t_new)
+  toc()# 0.01
+  # rm(Date_new, t_new)
+
+  # head(spinup)
+  
+  # print final input_file_crtlclim file and remove from environment
+  crtlclim_SpinUP <- file.path(paste0(inputPath, "spinup", '/', protocol), paste0("ctrlclim", '_', protocol,"_SpinUp", ".RData"))
+  
+  tic()
+  save(spinup, file = crtlclim_SpinUP, version = 3)
+  toc() # 14 sec 
+  
+  # # check 
+  # load("/rd/gem/private/fishmip_inputs/ISIMIP3a/processed_forcings/spinup/1deg/ctrlclim_1deg_SpinUp.RData")
+  # head(spinup)
+
+  # tic()
+  # fwrite(spinup, crtlclim_SpinUP)
+  # toc() # 16
+  
+  rm(ctrlclim, crtlclim_SpinUP, spinup)
+  
+  # # add spinup to ctrlclim
+  # tic()
+  # ctrlclim<-ctrlclim %>%
+  #   full_join(spinup) %>%
+  #   arrange(Date, gridnum)
+  # toc() # 20 sec # 1 with lazy
+  # # rm(spinup)
+  # 
+  # tic()
+  # ctrlclim<-as_tibble(ctrlclim)
+  # toc() # 593.884 # 10 min
+  # 
+  # # print final input_file_crtlclim file and remove from environment
+  # crtlclim_withSpinUP <- file.path(paste0(inputPath, "ctrlclim", '/', protocol), paste0("ctrlclim", '_', protocol,"_withSpinUp", ".RData"))
+  # save(ctrlclim, file = crtlclim_withSpinUP, version = 3)
+  # # fwrite(x = ctrlclim, file = crtlclim_withSpinUP)
+  # rm(ctrlclim)
+  # 
+  # # OBSERVED
+  # # add spinup to obsclim file
+  # tic()
+  # obsclim<-obsclim %>%
+  #   full_join(time) %>%
+  #   full_join(gridnum_depth) %>%
+  #   arrange(Date, gridnum)
+  # toc() # 21 sec
+  # 
+  # # add spinup to crtlclim
+  # tic()
+  # obsclim<-obsclim %>%
+  #   full_join(spinup)
+  # toc() # 20 sec
+  # 
+  # # arrange file as per original
+  # tic()
+  # obsclim<-obsclim %>%
+  #   arrange(Date, gridnum)
+  # toc() # 24 sec
+  # 
+  # # # Plot one gridcell to check - seems OK
+  # # trial<-obsclim %>%
+  # #   filter(gridnum == 1) %>%
+  # #   mutate(Year = format(as.Date(Date), "%Y"))  %>%
+  # #   group_by(Year) %>%
+  # #   summarise(lphy = mean(lphy)) %>%
+  # #   ungroup() %>%
+  # #   mutate(Year = as.numeric(Year))
+  # #
+  # # plot<-ggplot(trial, aes(x = Year, y = lphy))+
+  # #   geom_point()+
+  # #   geom_line()+
+  # #   annotate("rect", xmin=1961, xmax=1980, ymin=-Inf, ymax=Inf, fill = "#b2e2e2", alpha = 0.4)
+  # #
+  # # pdf("Output/plot1_lazy.pdf", height = 4, width = 6)
+  # # plot
+  # # dev.off()
+  # 
+  # tic()
+  # obsclim<-as_tibble(obsclim)
+  # toc() # 593.884 # 10 min
+  # 
+  # # print final input_file_crtlclim file and remove from environment
+  # obsclim_withSpinUP <- file.path(paste0(inputPath, "obsclim", '/', protocol), paste0("obsclim", '_', protocol,"_withSpinUp", ".RData"))
+  # save(obsclim, file = obsclim_withSpinUP, version = 3)
+  
+  
+  # rm(obsclim, spinup, time) # ANYTHING ELSE?
+
+}
+
 # tic()
 # calc_input_spinup_gridcell(inputPath = "/rd/gem/private/fishmip_inputs/ISIMIP3a/processed_forcings/", protocol = "1deg", subset = NA)
 # toc() # 235.699 # 4 min
-# 
-# # tic() # FILE TOO LARGE
-# # calc_input_spinup_gridcell(inputPath = "/rd/gem/private/fishmip_inputs/ISIMIP3a/processed_forcings/", protocol = "0.25deg")
-# # toc() # ERRROR Error: cannot allocate vector of size 10.7 Gb
+
+# tic() # FILE TOO LARGE
+# calc_input_spinup_gridcell(inputPath = "/rd/gem/private/fishmip_inputs/ISIMIP3a/processed_forcings/", protocol = "0.25deg")
+# toc() # ERRROR Error: cannot allocate vector of size 10.7 Gb
+
+# ONLY SPIN-UP for ctrlclim to run once as it's the same for both scenarios 
+
+tic()
+calc_input_spinup_gridcell(inputPath = "/rd/gem/private/fishmip_inputs/ISIMIP3a/processed_forcings/", protocol = "1deg")
+toc() # 1 min but with lazy and in wired format if saves as Rdata - could try as csv. # not lazy 1.5 min
+
+tic()
+calc_input_spinup_gridcell(inputPath = "/rd/gem/private/fishmip_inputs/ISIMIP3a/processed_forcings/", protocol = "0.25deg")
+toc() # 27 min
 
 # # OPTION 2 at gridcell level ...
 # 
