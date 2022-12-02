@@ -15,14 +15,14 @@ rungridsep <- function(igrid
                        ,input_files_location
                        ,output_files_location) {
   
-  # CN trial 
-  # where is igrid specified? in the loop that calls this function 
+  # CN trial
+  # # where is igrid specified? in the loop that calls this function
   # igrid <- 1
   # gcm = curr_esm
   # protocol = curr_scen
   # output = "partial"
   # input_files_location = input_loc
-  # output_files_location = output_loc_trial
+  # output_files_location = output_loc
   
   # we need to run the model with time-varying inputs   
   # the largest dt of the model is a monthly time step (Q-F was daily...which may still be needed) 
@@ -115,6 +115,7 @@ rungridsep <- function(igrid
     # these matrices in project() are built as U[,Neq+1] and hence have 1 time step more than the inputs 
     # also you should start after spinup and finish when inputs finish (including start and end) 
     isave <- seq(from=(300*48)+1, to=((dim(inputs$ts)[1])), by = 4) # not sure why this was set up that way 
+    # length(isave)
     
     ## CHECK IF MODEL HAS CRASHED, IF IT HAS, 10X MORE STEPS AND RUN AGAIN
     # CN in this case, we do the same as for the function above but we increase the time step resolution (run more in-between input values)

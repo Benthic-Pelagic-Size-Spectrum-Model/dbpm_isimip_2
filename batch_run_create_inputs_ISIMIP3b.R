@@ -30,14 +30,17 @@ numcores <- 40
 # scenario <- c("historical", "picontrol", "ssp126", "ssp585")
 
 # CN CMIPab runs
-esms <- c("obsclim", "ctrlsclim", "spinup")
+esms <- c("obsclim", "ctrlclim", "spinup") # obsclim = 41934; ctrlsclim = 0; spinup = 0 - it stopped in ctrlclim due to spelling error for this scenario  
+# retry ... 
+esms <- c("ctrlclim", "spinup") # ctrlclim = 41934; spinup = 0 loop stopped: "Error in print((proc.time() - ptm)/60) : object 'ptm' not found"
+# retry 
+esms <- c("spinup") # 6965.805 sec elapsed - about 2 h for scenario
 scenario <- c("1deg") #, "0.25deg") # WARNING 0.25 still too big ... 
 
-tic()
 for(i in 1:length(esms)){
 
   # trial 
-  # i = 3 # spinup
+  # i = 2
   
   curr_esm <- esms[i]
 
@@ -48,7 +51,7 @@ for(i in 1:length(esms)){
   for(j in 1:length(scenario)){
 
     # trial 
-    # j = 2 # 1deg
+    # j = 1 # 1deg
     
     curr_scen <- scenario[j]
     
@@ -119,12 +122,12 @@ for(i in 1:length(esms)){
 
     clusterApply(cl,x=grids,fun=getgridin, curr_esm = curr_esm, curr_scen = curr_scen, save_path = save_path)
 
-    print((proc.time()-ptm)/60.0)
+    # print((proc.time()-ptm)/60.0)
 
     # stopCluster(cl)
     toc() # 1 sec per gridcell... 
 
-  }
+ }
 
 }
 
