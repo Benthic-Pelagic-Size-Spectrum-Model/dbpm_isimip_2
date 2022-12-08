@@ -345,15 +345,15 @@ calc_inputs_all_LME<-function(this_LME){
   
   this_LME_new<-paste0("LME_", this_LME, "_")
   
-  lme_obs<-list.files(file_path_obs, pattern = this_LME_new, full.names = TRUE) 
-  lme_ctrl<-list.files(file_path_crtl, pattern = this_LME_new, full.names = TRUE) 
+  lme_obs<-list.files(file_path_obs, pattern = this_LME_new) #, full.names = TRUE) # this adds the whole path
+  lme_ctrl<-list.files(file_path_crtl, pattern = this_LME_new) #, full.names = TRUE) 
   
   tic()
   output_obs<-list()
   output_crtl<-list()
   
   for(i in 1:length(lme_obs)){
-  
+  # i = 1
     a<-calc_inputs_LME(file_name_obs = lme_obs[[i]], 
                        file_name_crtl = lme_ctrl[[i]], 
                        file_path_crtl = file_path_crtl, 
@@ -637,6 +637,10 @@ head(DBPM_LME_climate_inputs_slope)
 fwrite(x = DBPM_LME_climate_inputs_slope, file.path("/rd/gem/private/fishmip_inputs/ISIMIP3a/processed_forcings/lme_inputs/obsclim/0.25deg/", "DBPM_LME_climate_inputs_slope.csv"))
 fwrite(x = DBPM_LME_effort_catch_input, file.path("/rd/gem/private/fishmip_inputs/ISIMIP3a/processed_forcings/lme_inputs/obsclim/0.25deg/", "DBPM_LME_effort_catch_input.csv"))
 
+# print into public folder too. Then delete temp files from ~/dbpm/Output/
+fwrite(x = DBPM_LME_climate_inputs_slope, file.path("/rd/gem/public/fishmip/ISIMIP3a/InputData/DBPM_lme_inputs/obsclim/0.25deg/", "DBPM_LME_climate_inputs_slope.csv"))
+fwrite(x = DBPM_LME_effort_catch_input, file.path("/rd/gem/public/fishmip/ISIMIP3a/InputData/DBPM_lme_inputs/obsclim/0.25deg/", "DBPM_LME_effort_catch_input.csv"))
+
 ##### END CN at LME scale -----
 
 
@@ -655,7 +659,7 @@ fwrite(x = DBPM_LME_effort_catch_input, file.path("/rd/gem/private/fishmip_input
 
 # --------------------------------------------------------
 
-### CN prepare input files at for CMIP63a ----
+### CN prepare input files for CMIP63a ----
 # download controlclim files from DKRZ on 02/09/2022
 # download all file in this directory to ctrlclim 
 # scp -r b381217@levante.dkrz.de:/work/bb0820/ISIMIP/ISIMIP3a/SecondaryInputData/climate/ocean/ctrlclim/global/monthly/historical/GFDL-MOM6-COBALT2/* ./
