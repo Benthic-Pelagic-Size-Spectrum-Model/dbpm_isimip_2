@@ -536,11 +536,16 @@ mknetcdf_agg_sp<-function(varname, protocol, inputpath, datapath, savetopath, gr
   # size - fishmip required size bins (1g, 10g, 100g, 1kg, 10kg, 100kg). classes: 1-10, 10-100, 100-1000, 1000-10000, 10000-100000, 100000+
   size <- c(1, 10, 100, 1000, 10000, 100000)
   
+  # CORRECT BINS SIZE NAMES (ask Matthias for old files (3b pahse1) and use this code for new ones)
+  size_dimnames<-c(1,2,3,4,5,6) # this are the size bins in log10 values (starting with 10g) so log10(10,100,1000,10000,100000,1000000)
+  # OR SHOULD THEY BE 0 to 5 as in 1g to 100000 g - PROTOCOL: If the model is size-structured, please provide biomass in equal log 10 g weight bins (1-10g, 10-100g, 100g-1kg, 1-10kg, 10-100kg, >100kg)
+  
   # storage for the gridded outputs for current variable 
-  var <- array(1e20, dim = c(length(lon), length(lat), length(size), length(t)), dimnames = list(lon,lat, size,t))
+  var <- array(1e20, dim = c(length(lon), length(lat), length(size), length(t)), dimnames = list(lon,lat, size_dimnames,t))
+  dimnames(var)
   
   # get netcdf names
-  nc_names <- paste(savetopath, protocol,"/dbpm_", tolower(curr_esm), "_nobasd_", protocol, "_nat_default_",varname, "_global_monthly_", yearRange, ".nc", sep = "") 
+  nc_names <- paste(savetopath, protocol,"/dbpm_", tolower(curr_esm), "_nobasd_", protocol, "_nat_default_",varname, "_global_monthly_CORRECTED_", yearRange, ".nc", sep = "") 
   
   # grids<-1:10
   
@@ -585,8 +590,10 @@ mknetcdf_agg_sp<-function(varname, protocol, inputpath, datapath, savetopath, gr
       # 5 allocate outputs to the matrix by size and time as you've done below
 
       # define size classes and positions (as above)
+      # options(scipen=999)
       wcut<-size
       xcutref <- wcut
+      # identify the position of these sizes in the U and V matrices where sizes are in log10 (this is the original code)
       for (i in 1:length(xcutref)) xcutref[i] = (min(which(other_param$x>=log10(xcutref[i]))))
 
       # test to understand the code .... 
@@ -663,12 +670,8 @@ mknetcdf_agg_sp<-function(varname, protocol, inputpath, datapath, savetopath, gr
     
   }
   
-  # transform dimnames from g to log10(g) - not sure why but protocol says: TOTAL consumer biomass density in log10 weight bins;
-  # If the model is size-structured, please provide biomass in equal log 10 g C weight bins (1g, 10g, 100g, 1kg, 10kg, 100kg)
-  dimnames(var)[[3]]<-as.character(log10(as.numeric(dimnames(var)[[3]])))
-  # names(var)[[3]]<-dimnames(var)[[3]]
-  # check
-  # var[1:2,1:2,1:6,1:2]
+  # CORRECT BINS SIZE NAMES (ask Matthias for old files (3b pahse1) and use this code for new ones)
+  # dimnames(var)[[3]]<-as.character(log10(as.numeric(dimnames(var)[[3]])))
   
   ## WRITE NETCDFS
   
@@ -693,14 +696,18 @@ mknetcdf_agg_sp<-function(varname, protocol, inputpath, datapath, savetopath, gr
   att.put.nc(new_nc, variable = 'lat', type = 'NC_CHAR', name = 'axis', value = 'Y')
   
   # CN define all about size as per lat and lon above 
-  dim.def.nc(new_nc, 'size', dimlength = length(size))
-  var.def.nc(new_nc, 'size', 'NC_FLOAT', 'size')
-  var.put.nc(new_nc, 'size', size) 
-  att.put.nc(new_nc, variable = 'size', type = 'NC_CHAR', name = 'long_name', value = 'size')
-  att.put.nc(new_nc, variable = 'size', type = 'NC_CHAR', name = 'standard_name', value = 'size') 
-  att.put.nc(new_nc, variable = 'size', type = 'NC_CHAR', name = 'units', value = 'log10g')
-  att.put.nc(new_nc, variable = 'size', type = 'NC_CHAR', name = 'axis', value = 'Z')
+  # CORRECT BINS SIZE NAMES (ask Matthias for old files (3b pahse1) and use this code for new ones)
+  # replace size with size_dimnames
+  # also adjust names as per Matthias correction: replace size with bins 
+  dim.def.nc(new_nc, 'bins', dimlength = length(size_dimnames))
+  var.def.nc(new_nc, 'bins', 'NC_FLOAT', 'bins')
+  var.put.nc(new_nc, 'bins', size_dimnames) 
+  att.put.nc(new_nc, variable = 'bins', type = 'NC_CHAR', name = 'long_name', value = 'log10 Weight Bins')
+  att.put.nc(new_nc, variable = 'bins', type = 'NC_CHAR', name = 'standard_name', value = 'log10 Weight Bins') 
+  att.put.nc(new_nc, variable = 'bins', type = 'NC_CHAR', name = 'units', value = '-')
+  att.put.nc(new_nc, variable = 'bins', type = 'NC_CHAR', name = 'axis', value = 'Z')
   
+  # NOTE: Matthias moves this dimension as first dimension in the dimension description. The tools he uses reads files as [time, lon, lat, bin]
   dim.def.nc(new_nc, 'time', unlim = TRUE)
   var.def.nc(new_nc, 'time', 'NC_DOUBLE', 'time')
   var.put.nc(new_nc, 'time', t)
@@ -710,7 +717,7 @@ mknetcdf_agg_sp<-function(varname, protocol, inputpath, datapath, savetopath, gr
   att.put.nc(new_nc, variable = 'time', type = 'NC_CHAR', name = 'calendar', value = '360_day') 
   att.put.nc(new_nc, variable = 'time', type = 'NC_CHAR', name = 'axis', value = 'T')
   
-  var.def.nc(new_nc, varname, "NC_FLOAT", c('lon', 'lat','size','time'))
+  var.def.nc(new_nc, varname, "NC_FLOAT", c('lon', 'lat','bins','time'))
   att.put.nc(new_nc, variable = varname, type = 'NC_CHAR', name = 'long_name', value = "Total consumers biomass density in log10 weight bins")
   att.put.nc(new_nc, variable = varname, type = 'NC_CHAR', name = 'units', value = "g m-2") 
   att.put.nc(new_nc, variable = varname, type = 'NC_FLOAT', name = 'missing_value', value = 1e20)
@@ -722,7 +729,7 @@ mknetcdf_agg_sp<-function(varname, protocol, inputpath, datapath, savetopath, gr
   att.put.nc(new_nc, variable = "NC_GLOBAL", name = "institution", type = "NC_CHAR", value = "Institute for Marine and Antarctic Studies")
   att.put.nc(new_nc, variable = "NC_GLOBAL", name = "date_created", type = "NC_CHAR", value = date())
   att.put.nc(new_nc, variable = "NC_GLOBAL", name = "comments", type = "NC_CHAR", value = "Model output for ISIMIP3b")
-  att.put.nc(new_nc, variable = "NC_GLOBAL", name = "length-weight_conversion", type = "NC_CHAR", value = 'wet weight = 0.01*(length^3)') 
+  # att.put.nc(new_nc, variable = "NC_GLOBAL", name = "length-weight_conversion", type = "NC_CHAR", value = 'wet weight = 0.01*(length^3)') 
 
   close.nc(new_nc)
   

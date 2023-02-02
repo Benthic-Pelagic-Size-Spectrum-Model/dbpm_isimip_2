@@ -195,52 +195,53 @@ vars2make <- c('tcb', 'tpb', 'bp30cm', 'bp30to90cm',"bp90cm",'tdb','bd30cm', 'bd
 
 # for(i in 1:length(vars2make)){
 
-  i = 3 # new runs with min size = -3: tcb done, tbp running now 
-  
-  for(j in 1:length(prots)){ 
-    
-    # j = 3 # ssp126: for aggregated outputs (all grids, monthly outputs) all variables takes 10 h to run  
-    # j = 4 # ssp585: for aggregated outputs (all grids, monthly outputs) all variables takes 10 h  
-    # j = 2 # historical: for aggregated outputs (all grids, monthly outputs) all variables takes ~2.2 days 
+  i = 3 # new runs with min size = -3: tcb done, tbp running now
+
+  for(j in 1:length(prots)){
+
+    # j = 3 # ssp126: for aggregated outputs (all grids, monthly outputs) all variables takes 10 h to run
+    # j = 4 # ssp585: for aggregated outputs (all grids, monthly outputs) all variables takes 10 h
+    # j = 2 # historical: for aggregated outputs (all grids, monthly outputs) all variables takes ~2.2 days
     # j = 1 # picontrol for aggregated outputs (all grids, monthly outputs) all variables takes 17 h
-    
-    # new round as above but only for histo and spps and given model outputs with no temp effect on senescence 
-    # run all together 
-     
+
+    # new round as above but only for histo and spps and given model outputs with no temp effect on senescence
+    # run all together
+
      # fix this for ssp585 due to 22430 cell where U is saved as character - fixed in runmodel_yearly line ~570 but temp solution (now deleted and moved to line ~330 makenetcdf_fumc.R; see below)
-     # Error in result_set$U[other_param$ref:other_param$Nx, isave] * other_param$dx : 
+     # Error in result_set$U[other_param$ref:other_param$Nx, isave] * other_param$dx :
        # non-numeric argument to binary operator
-    # tcb OK for the 3 protocols  
-    
-    # Fix errors as per Matthias 
+    # tcb OK for the 3 protocols
+
+    # Fix errors as per Matthias
     # j = 3
-    
-    # new runs given no temp effect on senescence and detritus otehr mortality 
+
+    # new runs given no temp effect on senescence and detritus otehr mortality
     # run both IPSL and GFDL
     # the erron on cell 22430 for IPSl did not come up when creating outputs - but it did for another cell for GFDL... how to identify the grid cell? explore which file is bigger than a regular one: cell 38658
     # to fix this error I transform outputs to numeric (if they have been saved as characters) in line ~ 330 makenetcdf_fumc.R
-    
-    # grids<-36 # for GFDL this grid cell gives an error, it did not like paste(input$depth$lon) so now replaced with input$depth$lon 
-    
+
+    # grids<-36 # for GFDL this grid cell gives an error, it did not like paste(input$depth$lon) so now replaced with input$depth$lon
+
     # i = 1
     # j = 4
-    
+
     # GFDL files corrupted - see note below on size-spectrum function
     # re-running tcb first as you need to include in CMIP paper - then all the other
-    
-    # re-run all but tcb 
-    
+
+    # re-run all but tcb
+
     ptm=proc.time()
     options(warn=-1)
     print(paste('Now working on ', vars2make[i], ' for protocol ', prots[j], sep = ''))
     mknetcdf_agg(vars2make[i], prots[j], input_loc, output_loc, save_loc, grids, other_param, isave[[j]] ,yearRange[j], curr_esm)
     print((proc.time()-ptm)/60.0)
-    
+
  }
-    
+
  # }
 
 #### for aggregated size-spectrum outputs ----
+
 
 # for(j in 1:length(prots)){
   
